@@ -1,0 +1,12 @@
+{
+  "name": "scraper-protocol",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "server": "node server.js"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.8.14",
+    "mali": "^0.47.1"
+  }
+}
