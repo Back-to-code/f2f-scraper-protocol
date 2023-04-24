@@ -1,8 +1,8 @@
 # Scraper protocol
 
-This repo mainly contians the `server.proto` that defines a scraper.
+This repo mainly contians the `server.proto` that defines a scraper and **some** pre generated code.
 
-The server.proto can also be used by by clients such as the F2F app or RT-CV to communicate with a scraper
+The `server.proto` can also be used by by clients such as the F2F app or RT-CV to communicate with a scraper
 
 ## Requirements
 

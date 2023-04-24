@@ -21,7 +21,7 @@ func (initServer) SetRtCvLocation(_ context.Context, req *pb.SetRtCvLocationRequ
 	data, _ := json.Marshal(req)
 	fmt.Println("set server location:", string(data))
 
-	return nil, status.Errorf(codes.Unimplemented, "method SetRtCvLocation not implemented")
+	return &pb.Empty{}, nil
 }
 
 type scraperServer struct {
