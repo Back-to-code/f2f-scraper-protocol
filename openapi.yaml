@@ -1,0 +1,85 @@
+openapi: 3.0.0
+info:
+  version: 1.0.0
+  title: A Scraper
+  description: This defines how a scraper should behave
+paths:
+  /health:
+    get:
+      description: Used by other services to check if a scraper is alive
+      responses:
+        200:
+          description: server is alive
+  /check-credentials:
+    post:
+      description: Check if given credentials are correct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  minLength: 1
+                password:
+                  type: string
+                  minLength: 1
+      responses:
+        200:
+          description: The given credentials are valid
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - valid
+                properties:
+                  valid:
+                    type: boolean
+                    default: true
+        401:
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - valid
+                properties:
+                  valid:
+                    type: boolean
+                    default: false
+        400:
+          description: Bad request, this is most likely returned when the body is invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        404:
+          description: Not implemented
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+        500:
+          description: Internal server error, something within the scraper went wrong that is un related to the provided login credentials thus the given login credentials might be valid or invalid this is just a server failure.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  schemas:
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
