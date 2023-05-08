@@ -36,9 +36,10 @@ func mustGetEnv(k string, defaultValue string) string {
 // Scraper contains all the state of a scraper
 type Scraper struct {
 	// Required
-	server   string
-	apiKeyID string
-	apiKey   string
+	server              string
+	apiKeyID            string
+	apiKey              string
+	authorizationHeader string
 	// Might be set
 	privateKey string
 }
@@ -57,10 +58,11 @@ func Start(handelers Handlers, ops StartOptions) *Scraper {
 	privateKey := mightGetEnv("RTCV_PRIVATE_KEY", ops.PrivateKey)
 
 	scraper := &Scraper{
-		server:     server,
-		apiKeyID:   apiKeyID,
-		apiKey:     apiKey,
-		privateKey: privateKey,
+		server:              server,
+		apiKeyID:            apiKeyID,
+		apiKey:              apiKey,
+		authorizationHeader: fmt.Sprintf("Basic %s:%s", apiKeyID, apiKey),
+		privateKey:          privateKey,
 	}
 
 	err := scraper.Fetch("/api/v1/health", FetchOps{})
@@ -126,23 +128,25 @@ func (s *Scraper) GetUsers(mustAtLeastOneUser bool) ([]LoginUser, error) {
 		return nil, fmt.Errorf("$RTCV_PRIVATE_KEY is not set")
 	}
 
-	users := []LoginUser{}
+	resp := struct {
+		Users []LoginUser `json:"users"`
+	}{}
 
 	err := s.Fetch("/api/v1/scraperUsers/"+s.apiKeyID, FetchOps{
-		Output:  &users,
+		Output:  &resp,
 		Headers: map[string]string{"X-RT-CV-Private-Key": s.privateKey},
 	})
 	if err != nil {
 		return nil, err
 	}
-	if len(users) == 0 {
+	if len(resp.Users) == 0 {
 		return nil, errors.New("Expected at least one login user but got none, make sure your env.json is correct")
 	}
-	if mustAtLeastOneUser && len(users) == 0 {
+	if mustAtLeastOneUser && len(resp.Users) == 0 {
 		return nil, errors.New("No users found")
 	}
 
-	return users, nil
+	return resp.Users, nil
 }
 
 // SendCvReq is a request to send a cv to the server

@@ -51,10 +51,10 @@ func (s *Scraper) Fetch(path string, ops FetchOps) error {
 	}
 
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", s.authorizationHeader)
 	for k, v := range ops.Headers {
 		req.Header.Set(k, v)
 	}
-	req.Header.Set("Authorization", "Basic "+s.apiKeyID+":"+s.apiKey)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
