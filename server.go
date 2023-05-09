@@ -139,11 +139,8 @@ func (s *Scraper) GetUsers(mustAtLeastOneUser bool) ([]LoginUser, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(resp.Users) == 0 {
-		return nil, errors.New("Expected at least one login user but got none, make sure your env.json is correct")
-	}
 	if mustAtLeastOneUser && len(resp.Users) == 0 {
-		return nil, errors.New("No users found")
+		return nil, errors.New("no users found")
 	}
 
 	return resp.Users, nil
