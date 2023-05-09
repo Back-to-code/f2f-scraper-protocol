@@ -10,11 +10,11 @@ import (
 
 // StartOptions are the options for starting the scraper
 type StartOptions struct {
-	Listen     string // Default: ":3000"
-	Server     string // If not set will try to use RTCV_SERVER env variable
-	APIKeyID   string // If not set will try to use RTCV_API_KEY_ID env variable
-	APIKey     string // If not set will try to use RTCV_API_KEY env variable
-	PrivateKey string // If not set will try to use RTCV_PRIVATE_KEY env variable
+	Listen        string // Default: ":3000"
+	APIServer     string // If not set will try to use RTCV_SERVER env variable
+	APIKeyID      string // If not set will try to use RTCV_API_KEY_ID env variable
+	APIKey        string // If not set will try to use RTCV_API_KEY env variable
+	APIPrivateKey string // If not set will try to use RTCV_PRIVATE_KEY env variable
 }
 
 func mightGetEnv(k string, defaultValue string) string {
@@ -51,11 +51,11 @@ type errorResponseT struct {
 
 // Start starts the scraper
 func Start(handelers Handlers, ops StartOptions) *Scraper {
-	server := mustGetEnv("RTCV_SERVER", ops.Server)
+	server := mustGetEnv("RTCV_SERVER", ops.APIServer)
 	apiKeyID := mustGetEnv("RTCV_API_KEY_ID", ops.APIKeyID)
 	apiKey := mustGetEnv("RTCV_API_KEY", ops.APIKey)
 
-	privateKey := mightGetEnv("RTCV_PRIVATE_KEY", ops.PrivateKey)
+	privateKey := mightGetEnv("RTCV_PRIVATE_KEY", ops.APIPrivateKey)
 
 	scraper := &Scraper{
 		server:              server,
