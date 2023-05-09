@@ -1,4 +1,4 @@
-# Build a scraper in golang
+# Build a scraper in GoLang
 
 This library helps you to build a scraper in GoLang and is compliant with the [open api spec](./openapi.yaml).
 

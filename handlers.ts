@@ -1,47 +1,65 @@
-export type ApiHandler = (request: Request) => (Response | Promise<Response>)
-export type ApiHandlers = Record<string, ApiHandler>
+export type PotentialPromise<T> = T | Promise<T>
 
-const notImplementedText = 'Not Implemented'
-const NotImplementedResponse = () => new Response(notImplementedText, { status: 404 })
+export interface Handlers {
+	checkCredentials?: (
+		username: string,
+		password: string
+	) => PotentialPromise<boolean>
+}
 
-export abstract class Handlers {
-    constructor() { }
+type ApiHandler = (request: Request) => Response | Promise<Response>
+type ApiHandlers = Record<string, ApiHandler>
 
-    getApiHandlers(): ApiHandlers {
-        return {
-            'GET /health': () => Response.json({ status: 'ok' }, { status: 200 }),
-            'POST /check-credentials': async (request) => {
-                const body = request.json()
+const notImplementedResponse = () =>
+	new Response("Not Implemented", { status: 404 })
 
-                const bodyError = () => new Response('Expected a body with a username and password', { status: 400 })
+export function resolveApiHandler(
+	handlers: Handlers,
+	method: string,
+	path: string
+): ApiHandler {
+	return apiHandlers(handlers)[`${method} ${path}`]
+}
 
-                if (typeof body !== 'object' || body === null) {
-                    return bodyError()
-                }
-                if (!('username' in body) || typeof body.username !== 'string') {
-                    return bodyError()
-                }
-                if (!('password' in body) || typeof body.password !== 'string') {
-                    return bodyError()
-                }
+function apiHandlers(handlers: Handlers): ApiHandlers {
+	return {
+		"GET /health": () => Response.json({ status: "ok" }, { status: 200 }),
+		"POST /check-credentials": async (request) => {
+			if (!handlers.checkCredentials) {
+				return notImplementedResponse()
+			}
 
-                try {
-                    const valid = await this.checkCredentials(body.username, body.password)
-                    return Response.json({ valid }, { status: valid ? 200 : 401 })
-                } catch (e) {
-                    if (typeof e === 'string' && e === notImplementedText) {
-                        return NotImplementedResponse()
-                    }
+			const body = request.json()
 
-                    console.log("Failed to check credentials, error:")
-                    console.log(e)
-                    return Response.json({ error: 'Failed to check credentials' }, { status: 500 })
-                }
-            },
-        }
-    }
+			const bodyError = () =>
+				new Response("Expected a body with a username and password", {
+					status: 400,
+				})
 
-    checkCredentials(_username: string, _password: string): Promise<boolean> {
-        throw notImplementedText
-    }
+			if (typeof body !== "object" || body === null) {
+				return bodyError()
+			}
+			if (!("username" in body) || typeof body.username !== "string") {
+				return bodyError()
+			}
+			if (!("password" in body) || typeof body.password !== "string") {
+				return bodyError()
+			}
+
+			try {
+				const valid = await handlers.checkCredentials(
+					body.username,
+					body.password
+				)
+				return Response.json({ valid }, { status: valid ? 200 : 401 })
+			} catch (e) {
+				console.log("Failed to check credentials, error:")
+				console.log(e)
+				return Response.json(
+					{ error: "Failed to check credentials" },
+					{ status: 500 }
+				)
+			}
+		},
+	}
 }

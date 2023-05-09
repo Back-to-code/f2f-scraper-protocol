@@ -54,12 +54,10 @@ type Preferences struct {
 
 // Education is something a user has followed
 type Education struct {
-	Is uint8 `json:"is" description:"What kind of education is this?: 0: Unknown, 1: Education, 2: Course"`
-
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Institute   string `json:"institute"`
-	// TODO find difference between isCompleted and hasdiploma
+	Is          uint8            `json:"is" description:"What kind of education is this?: 0: Unknown, 1: Education, 2: Course"`
+	Name        string           `json:"name"`
+	Description string           `json:"description"`
+	Institute   string           `json:"institute"`
 	IsCompleted bool             `json:"isCompleted"`
 	HasDiploma  bool             `json:"hasDiploma"`
 	StartDate   *JSONRFC3339Nano `json:"startDate"`
