@@ -8,7 +8,7 @@ export interface ServerOptions {
 	apiKey?: string // If not set will try to use RTCV_API_KEY env variable
 
 	// Optional:
-	listen?: number // Default: 3000
+	port?: number // If not set will try to use SERVER_PORT or default to: 3000
 	apiPrivateKey?: string // If not set will try to use RTCV_PRIVATE_KEY env variable
 }
 
@@ -25,7 +25,7 @@ export interface LoginUser {
 
 export class Server {
 	private handlers: Handlers
-	private listen: number
+	private port: number
 	private apiServer: string
 	private apiKeyId: string
 	private authorizationHeader: string
@@ -33,7 +33,16 @@ export class Server {
 
 	constructor(handelers: Handlers, options: ServerOptions) {
 		this.handlers = handelers
-		this.listen = options.listen ?? 3000
+
+		const potentialsServerPort = mightGetEnv("SERVER_PORT")
+		if (potentialsServerPort) {
+			this.port = Number(potentialsServerPort)
+			if (Number.isNaN(this.port)) {
+				console.log("the $SERVER_PORT shell variable is not a number")
+			}
+		} else {
+			this.port = options.port ?? 3000
+		}
 		this.apiServer = mustGetEnv("RTCV_SERVER", options.apiServer)
 		this.privateKey =
 			mightGetEnv("RTCV_PRIVATE_KEY", options.apiPrivateKey) || undefined
@@ -117,8 +126,8 @@ export class Server {
 
 	// startServer starts the server and listens for incoming connections
 	public async startServer() {
-		const s = Deno.listen({ port: this.listen })
-		console.log(`Listening on http://localhost:${this.listen}/`)
+		const s = Deno.listen({ port: this.port })
+		console.log(`Listening on http://localhost:${this.port}/`)
 		for await (const conn of s) {
 			this.handleConn(conn)
 		}

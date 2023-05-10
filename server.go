@@ -4,17 +4,18 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 // StartOptions are the options for starting the scraper
 type StartOptions struct {
-	Listen        string // Default: ":3000"
-	APIServer     string // If not set will try to use RTCV_SERVER env variable
-	APIKeyID      string // If not set will try to use RTCV_API_KEY_ID env variable
-	APIKey        string // If not set will try to use RTCV_API_KEY env variable
-	APIPrivateKey string // If not set will try to use RTCV_PRIVATE_KEY env variable
+	Listen        string // If not set will try to use $SERVER_PORT or default to: ":3000"
+	APIServer     string // If not set will try to use $RTCV_SERVER env variable
+	APIKeyID      string // If not set will try to use $RTCV_API_KEY_ID env variable
+	APIKey        string // If not set will try to use $RTCV_API_KEY env variable
+	APIPrivateKey string // If not set will try to use $RTCV_PRIVATE_KEY env variable
 }
 
 func mightGetEnv(k string, defaultValue string) string {
@@ -105,8 +106,12 @@ func Start(handelers Handlers, ops StartOptions) *Scraper {
 	})
 
 	go func(listen string) {
+		listen = mightGetEnv("SERVER_PORT", listen)
 		if listen == "" {
 			listen = ":3000"
+		} else if !strings.Contains(listen, ":") {
+			// Presume only the port was provided and not the host
+			listen = ":" + listen
 		}
 		err := app.Listen(listen)
 		fmt.Printf("Failed to start server, error: %s\n", err)
