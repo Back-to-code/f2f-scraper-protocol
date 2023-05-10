@@ -2,6 +2,8 @@
 
 This library helps you to build a scraper in GoLang and is compliant with the [open api spec](./openapi.yaml).
 
+The example below expects the following shell variables: [.env.example](./.env.example)
+
 ```bash
 go get -u bitbucket.org/teamscript/scraper-protocol
 ```
