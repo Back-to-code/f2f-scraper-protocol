@@ -58,8 +58,8 @@ type Education struct {
 	Name        string           `json:"name"`
 	Description string           `json:"description"`
 	Institute   string           `json:"institute"`
-	IsCompleted bool             `json:"isCompleted"`
-	HasDiploma  bool             `json:"hasDiploma"`
+	IsCompleted *bool            `json:"isCompleted"`
+	HasDiploma  *bool            `json:"hasDiploma"`
 	StartDate   *JSONRFC3339Nano `json:"startDate"`
 	EndDate     *JSONRFC3339Nano `json:"endDate"`
 }

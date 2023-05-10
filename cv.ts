@@ -26,8 +26,8 @@ export interface Education {
 	name: string
 	description: string
 	institute: string
-	isCompleted: boolean
-	hasDiploma: boolean
+	isCompleted?: boolean
+	hasDiploma?: boolean
 	startDate?: string // assuming JSONRFC3339Nano is a custom date format
 	endDate?: string // assuming JSONRFC3339Nano is a custom date format
 }
