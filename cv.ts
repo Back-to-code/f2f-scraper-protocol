@@ -35,11 +35,11 @@ export interface Education {
 export interface WorkExperience {
 	description: string
 	profession: string
+	employer: string
 	startDate?: string // assuming JSONRFC3339Nano is a custom date format
 	endDate?: string // assuming JSONRFC3339Nano is a custom date format
-	stillEmployed: boolean
-	employer: string
-	weeklyHoursWorked: number
+	stillEmployed?: boolean
+	weeklyHoursWorked?: number
 }
 
 export interface Preferences {

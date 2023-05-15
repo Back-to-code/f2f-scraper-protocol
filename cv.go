@@ -68,11 +68,11 @@ type Education struct {
 type WorkExperience struct {
 	Description       string           `json:"description"`
 	Profession        string           `json:"profession"`
+	Employer          string           `json:"employer"`
 	StartDate         *JSONRFC3339Nano `json:"startDate"`
 	EndDate           *JSONRFC3339Nano `json:"endDate"`
-	StillEmployed     bool             `json:"stillEmployed"`
-	Employer          string           `json:"employer"`
-	WeeklyHoursWorked int              `json:"weeklyHoursWorked"`
+	StillEmployed     *bool            `json:"stillEmployed"`
+	WeeklyHoursWorked *uint            `json:"weeklyHoursWorked"`
 }
 
 // LanguageLevel is something that i'm not sure what it is
