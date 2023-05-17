@@ -49,7 +49,7 @@ export class Server {
 
 		this.apiKeyId = mustGetEnv("RTCV_API_KEY_ID", options.apiKeyId)
 		const apiKey = mustGetEnv("RTCV_API_KEY", options.apiKey)
-		this.authorizationHeader = `basic ${this.apiKeyId}:${apiKey}`
+		this.authorizationHeader = `Basic ${this.apiKeyId}:${apiKey}`
 
 		// Health check the RT-CV server
 		this.health().catch((e) => {
