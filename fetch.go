@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 // FetchOps are the options for the fetch function
@@ -14,6 +15,23 @@ type FetchOps struct {
 	Method  string            // Default: "GET" or "POST" if body is set
 	Output  interface{}       // UnMarshal the json response into this
 	Headers map[string]string // Optional additional headers
+}
+
+// FetchWithRetries makes a fetch request to RT-CV and retries it 3 times if it fails
+func (s *Scraper) FetchWithRetries(path string, ops FetchOps) error {
+	var err error
+	var retries = 3
+	for i := 0; i < retries+1; i++ {
+		err = s.Fetch(path, ops)
+		if err == nil {
+			return nil
+		}
+		if i != retries {
+			// Have a delay between retries
+			time.Sleep(time.Second * 5)
+		}
+	}
+	return err
 }
 
 // Fetch data from RT-CV

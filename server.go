@@ -3,6 +3,7 @@ package scraper
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 
@@ -11,11 +12,8 @@ import (
 
 // StartOptions are the options for starting the scraper
 type StartOptions struct {
-	Listen        string // If not set will try to use $SERVER_PORT or default to: ":3000"
-	APIServer     string // If not set will try to use $RTCV_SERVER env variable
-	APIKeyID      string // If not set will try to use $RTCV_API_KEY_ID env variable
-	APIKey        string // If not set will try to use $RTCV_API_KEY env variable
-	APIPrivateKey string // If not set will try to use $RTCV_PRIVATE_KEY env variable
+	Listen    string // If not set will try to use $SERVER_PORT or default to: ":3000"
+	APIServer string // If not set will try to use $RTCV_SERVER env variable
 }
 
 func mightGetEnv(k string, defaultValue string) string {
@@ -41,8 +39,6 @@ type Scraper struct {
 	apiKeyID            string
 	apiKey              string
 	authorizationHeader string
-	// Might be set
-	privateKey string
 }
 
 // errorResponseT is send by the server when an error occurs
@@ -53,20 +49,39 @@ type errorResponseT struct {
 // Start starts the scraper
 func Start(handelers Handlers, ops StartOptions) *Scraper {
 	server := mustGetEnv("RTCV_SERVER", ops.APIServer)
-	apiKeyID := mustGetEnv("RTCV_API_KEY_ID", ops.APIKeyID)
-	apiKey := mustGetEnv("RTCV_API_KEY", ops.APIKey)
+	url, err := url.Parse(server)
+	if err != nil {
+		fmt.Printf("Invalid RTCV_SERVER url: %s\n", err)
+		os.Exit(1)
+	}
+	if url.User == nil {
+		fmt.Println("RTCV_SERVER url must contain api credentials like: https://key_id:key@example.com")
+		os.Exit(1)
+	}
+	apiKeyID := url.User.Username()
+	apiKey, passwordSet := url.User.Password()
+	if !passwordSet {
+		fmt.Println("RTCV_SERVER url must contain a rt-cv api key id and key, like: https://key_id:key@example.com")
+		os.Exit(1)
+	}
 
-	privateKey := mightGetEnv("RTCV_PRIVATE_KEY", ops.APIPrivateKey)
+	if apiKeyID == "" || apiKey == "" {
+		fmt.Println("RTCV_SERVER url must contain valid api credentials like: https://key_id:key@example.com")
+		os.Exit(1)
+	}
+
+	url.User = nil
+	server = url.String()
 
 	scraper := &Scraper{
 		server:              server,
 		apiKeyID:            apiKeyID,
 		apiKey:              apiKey,
 		authorizationHeader: fmt.Sprintf("Basic %s:%s", apiKeyID, apiKey),
-		privateKey:          privateKey,
 	}
 
-	err := scraper.Fetch("/api/v1/health", FetchOps{})
+	fmt.Println("health checking RT-CV...")
+	err = scraper.FetchWithRetries("/api/v1/health", FetchOps{})
 	if err != nil {
 		fmt.Printf("Failed to ping RT-CV, error: %s\n", err)
 		os.Exit(1)
@@ -129,23 +144,26 @@ type LoginUser struct {
 
 // GetUsers gets the login users
 func (s *Scraper) GetUsers(mustAtLeastOneUser bool) ([]LoginUser, error) {
-	if s.privateKey == "" {
-		return nil, fmt.Errorf("$RTCV_PRIVATE_KEY is not set")
-	}
-
 	resp := struct {
 		Users []LoginUser `json:"users"`
 	}{}
 
-	err := s.Fetch("/api/v1/scraperUsers/"+s.apiKeyID, FetchOps{
-		Output:  &resp,
-		Headers: map[string]string{"X-RT-CV-Private-Key": s.privateKey},
-	})
+	err := s.Fetch("/api/v1/scraperUsers/"+s.apiKeyID, FetchOps{Output: &resp})
 	if err != nil {
 		return nil, err
 	}
 	if mustAtLeastOneUser && len(resp.Users) == 0 {
 		return nil, errors.New("no users found")
+	}
+
+	notSetPasswords := 0
+	for _, user := range resp.Users {
+		if user.Password == "" {
+			notSetPasswords++
+		}
+	}
+	if len(resp.Users) > 0 && notSetPasswords == len(resp.Users) {
+		return nil, errors.New("This key uses a unsupported and deprecated scraper user encryption method, please convert your users to the new encryption method via the RT-CV dashboard")
 	}
 
 	return resp.Users, nil
@@ -157,8 +175,9 @@ type SendCvReq struct {
 }
 
 // SendCV sends a cv to the server
+// A request is retried 3 times
 func (s *Scraper) SendCV(cv CV) error {
-	return s.Fetch("/api/v1/scraper/scanCV", FetchOps{Body: SendCvReq{cv}})
+	return s.FetchWithRetries("/api/v1/scraper/scanCV", FetchOps{Body: SendCvReq{cv}})
 }
 
 // SendCVsListReq is a request to send a cvs list to the server
@@ -168,5 +187,5 @@ type SendCVsListReq struct {
 
 // SendCVsList sends a cvs list to the server
 func (s *Scraper) SendCVsList(cvs []CV) error {
-	return s.Fetch("/api/v1/scraper/allCVs", FetchOps{Body: SendCVsListReq{cvs}})
+	return s.FetchWithRetries("/api/v1/scraper/allCVs", FetchOps{Body: SendCVsListReq{cvs}})
 }
