@@ -75,7 +75,10 @@ export class Server {
 			},
 		}
 
-		if (options.body) {
+		if (options.body && options.body instanceof FormData) {
+			fetchOptions.body = options.body
+			// Content-Type will be set automatically by the fetch method
+		} else {
 			fetchOptions.body = JSON.stringify(options.body)
 			fetchOptions.headers = {
 				...fetchOptions.headers,
@@ -119,6 +122,16 @@ export class Server {
 	public async sendCv(cv: Cv) {
 		const body = { cv }
 		await this.fetch("/api/v1/scraper/scanCV", { body, method: "POST" })
+	}
+
+	// sendCvDocument sends a CV document to RT-CV
+	public async sendCvDocument(metadata: Cv, cvFile: Blob) {
+		const body = new FormData()
+
+		body.set("metadata", JSON.stringify(metadata))
+		body.set("cv", cvFile, "cv.pdf")
+
+		await this.fetch("/api/v1/scraper/scanCVDocument", { body, method: "POST" })
 	}
 
 	// startServer starts the server and listens for incoming connections
