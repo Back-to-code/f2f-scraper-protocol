@@ -154,7 +154,7 @@ export class Server {
 			request.method,
 			url.pathname
 		)
-		if (!apiHandler) respondWith(this.notFoundResponse())
+		if (!apiHandler) return respondWith(this.notFoundResponse())
 
 		const response = apiHandler(request)
 		if (!response) return respondWith(this.notFoundResponse())
