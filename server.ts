@@ -4,12 +4,8 @@ import type { Cv } from "./cv.ts"
 export interface ServerOptions {
 	// If not set by env var required:
 	apiServer?: string // If not set will try to use RTCV_SERVER env variable
-	apiKeyId?: string // If not set will try to use RTCV_API_KEY_ID env variable
-	apiKey?: string // If not set will try to use RTCV_API_KEY env variable
-
 	// Optional:
 	port?: number // If not set will try to use SERVER_PORT or default to: 3000
-	apiPrivateKey?: string // If not set will try to use RTCV_PRIVATE_KEY env variable
 }
 
 export interface FetchOptions {
@@ -29,7 +25,6 @@ export class Server {
 	private apiServer: string
 	private apiKeyId: string
 	private authorizationHeader: string
-	private privateKey: string | undefined
 
 	constructor(handelers: Handlers, options: ServerOptions) {
 		this.handlers = handelers
@@ -43,13 +38,18 @@ export class Server {
 		} else {
 			this.port = options.port ?? 3000
 		}
-		this.apiServer = mustGetEnv("RTCV_SERVER", options.apiServer)
-		this.privateKey =
-			mightGetEnv("RTCV_PRIVATE_KEY", options.apiPrivateKey) || undefined
+		const apiServer = new URL(mustGetEnv("RTCV_SERVER", options.apiServer))
+		if (!apiServer.username || !apiServer.password) {
+			console.log(
+				"RTCV_SERVER url must contain api credentials like: https://key_id:key@example.com"
+			)
+			Deno.exit(1)
+		}
 
-		this.apiKeyId = mustGetEnv("RTCV_API_KEY_ID", options.apiKeyId)
-		const apiKey = mustGetEnv("RTCV_API_KEY", options.apiKey)
-		this.authorizationHeader = `Basic ${this.apiKeyId}:${apiKey}`
+		this.apiKeyId = apiServer.username
+		this.apiServer = apiServer.origin
+
+		this.authorizationHeader = `Basic ${apiServer.username}:${apiServer.password}`
 
 		// Health check the RT-CV server
 		this.health().catch((e) => {
@@ -101,19 +101,16 @@ export class Server {
 	public async getUsers(
 		mustBeAtLeastOneUser: boolean
 	): Promise<Array<LoginUser>> {
-		if (!this.privateKey)
-			throw "Missing private key, set the $RTCV_PRIVATE_KEY env variable or provide it in the server options"
-
-		const { users } = await this.fetch(
-			"/api/v1/scraperUsers/" + this.apiKeyId,
-			{
-				headers: {
-					"X-RT-CV-Private-Key": this.privateKey,
-				},
-			}
-		)
+		const { users } = await this.fetch("/api/v1/scraperUsers/" + this.apiKeyId)
 
 		if (users.length == 0 && mustBeAtLeastOneUser) throw "No login users found"
+
+		const usersWithoutPasswords = users.filter(
+			(user: LoginUser) => !user.password
+		).length
+		if (users.length > 0 && usersWithoutPasswords === users.length) {
+			throw "This key uses a unsupported and deprecated scraper user encryption method, please convert your users to the new encryption method via the RT-CV dashboard"
+		}
 
 		return users
 	}
