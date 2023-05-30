@@ -2,9 +2,11 @@ import { resolveApiHandler, Handlers } from "./handlers.ts"
 import type { Cv } from "./cv.ts"
 
 export interface ServerOptions {
-	// If not set by env var required:
+	// Required (If not set by env variables):
 	apiServer?: string // If not set will try to use RTCV_SERVER env variable
+
 	// Optional:
+	alternativeServer?: string | false // If not set will try to use RTCV_ALTERNATIVE_SERVER env variable, if set to false will disable alternative server
 	port?: number // If not set will try to use SERVER_PORT or default to: 3000
 }
 
@@ -25,6 +27,7 @@ export class Server {
 	private apiServer: string
 	private apiKeyId: string
 	private authorizationHeader: string
+	private alternativeServer?: Server
 
 	constructor(handelers: Handlers, options: ServerOptions) {
 		this.handlers = handelers
@@ -53,15 +56,51 @@ export class Server {
 
 		// Health check the RT-CV server
 		this.health().catch((e) => {
-			console.log("Failed to ping RT-CV, error:")
-			console.log(e)
+			console.log(`Failed to ping RT-CV (${apiServer}), error:`, e)
 			Deno.exit(1)
 		})
+
+		if (options.alternativeServer !== false) {
+			const alternativeServer = mightGetEnv(
+				"RTCV_ALTERNATIVE_SERVER",
+				options.alternativeServer
+			)
+			if (alternativeServer) {
+				const handlers = {}
+				this.alternativeServer = new Server(handlers, {
+					apiServer: alternativeServer,
+					alternativeServer: false,
+					port: this.port,
+				})
+			}
+		}
 	}
 
 	// ---
 	// Public methods
 	// ---
+
+	public async fetchWithRetry(path: string, options: FetchOptions = {}) {
+		let retries = 0
+		while (true) {
+			try {
+				return await this.fetch(path, options)
+			} catch (e) {
+				if (retries < 3) {
+					retries++
+					const waitSeconds = retries * 3
+					console.log(
+						`failed to fetch ${path}, retrying in ${waitSeconds} second`
+					)
+					await new Promise((resolve) =>
+						setTimeout(resolve, waitSeconds * 1000)
+					)
+				} else {
+					throw e
+				}
+			}
+		}
+	}
 
 	// Make a request to RT-CV
 	// Returns the response decoded as JSOn
@@ -97,14 +136,16 @@ export class Server {
 
 	// health checks if the api server is up and running and if not throws an error
 	public async health() {
-		await this.fetch("/api/v1/health")
+		await this.fetchWithRetry("/api/v1/health")
 	}
 
 	// get all login users for the api key
 	public async getUsers(
 		mustBeAtLeastOneUser: boolean
 	): Promise<Array<LoginUser>> {
-		const { users } = await this.fetch("/api/v1/scraperUsers/" + this.apiKeyId)
+		const { users } = await this.fetchWithRetry(
+			"/api/v1/scraperUsers/" + this.apiKeyId
+		)
 
 		if (users.length == 0 && mustBeAtLeastOneUser) throw "No login users found"
 
@@ -120,18 +161,30 @@ export class Server {
 
 	// Send a scraped CV to RT-CV
 	public async sendCv(cv: Cv) {
+		this.alternativeServer?.sendCv(cv).catch((e) => {
+			console.log("failed to send cv to alternative server,", e)
+		})
 		const body = { cv }
-		await this.fetch("/api/v1/scraper/scanCV", { body, method: "POST" })
+		await this.fetchWithRetry("/api/v1/scraper/scanCV", {
+			body,
+			method: "POST",
+		})
 	}
 
 	// sendCvDocument sends a CV document to RT-CV
 	public async sendCvDocument(metadata: Cv, cvFile: Blob) {
+		this.alternativeServer?.sendCvDocument(metadata, cvFile).catch((e) => {
+			console.log("failed to send cv document to alternative server,", e)
+		})
 		const body = new FormData()
 
 		body.set("metadata", JSON.stringify(metadata))
 		body.set("cv", cvFile, "cv.pdf")
 
-		await this.fetch("/api/v1/scraper/scanCVDocument", { body, method: "POST" })
+		await this.fetchWithRetry("/api/v1/scraper/scanCVDocument", {
+			body,
+			method: "POST",
+		})
 	}
 
 	// startServer starts the server and listens for incoming connections

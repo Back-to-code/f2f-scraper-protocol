@@ -12,8 +12,15 @@ import (
 
 // StartOptions are the options for starting the scraper
 type StartOptions struct {
-	Listen    string // If not set will try to use $SERVER_PORT or default to: ":3000"
+	// Required (If not set by env variables)
 	APIServer string // If not set will try to use $RTCV_SERVER env variable
+	// Optional
+	Listen               string // If not set will try to use $SERVER_PORT or default to: ":3000"
+	AlternativeAPIServer string // If not set will try to use $RTCV_ALTERNATIVE_SERVER env variable
+
+	// Internal options
+	noAlternativeAPIServer bool // If true will disable the alternative server, mainly used
+	doNotStartServer       bool // If true will not start the scraper api endpoint
 }
 
 func mightGetEnv(k string, defaultValue string) string {
@@ -34,11 +41,11 @@ func mustGetEnv(k string, defaultValue string) string {
 
 // Scraper contains all the state of a scraper
 type Scraper struct {
-	// Required
 	server              string
 	apiKeyID            string
 	apiKey              string
 	authorizationHeader string
+	alternativeServer   *Scraper
 }
 
 // errorResponseT is send by the server when an error occurs
@@ -120,18 +127,31 @@ func Start(handelers Handlers, ops StartOptions) *Scraper {
 		})
 	})
 
-	go func(listen string) {
-		listen = mightGetEnv("SERVER_PORT", listen)
-		if listen == "" {
-			listen = ":3000"
-		} else if !strings.Contains(listen, ":") {
-			// Presume only the port was provided and not the host
-			listen = ":" + listen
+	if !ops.doNotStartServer {
+		go func(listen string) {
+			listen = mightGetEnv("SERVER_PORT", listen)
+			if listen == "" {
+				listen = ":3000"
+			} else if !strings.Contains(listen, ":") {
+				// Presume only the port was provided and not the host
+				listen = ":" + listen
+			}
+			err := app.Listen(listen)
+			fmt.Printf("Failed to start server, error: %s\n", err)
+			os.Exit(1)
+		}(ops.Listen)
+	}
+
+	if ops.noAlternativeAPIServer {
+		alternativeAPIServer := mightGetEnv("RTCV_ALTERNATIVE_SERVER", ops.AlternativeAPIServer)
+		if alternativeAPIServer != "" {
+			scraper.alternativeServer = Start(&BaseHandlers{}, StartOptions{
+				APIServer:              alternativeAPIServer,
+				doNotStartServer:       true,
+				noAlternativeAPIServer: true,
+			})
 		}
-		err := app.Listen(listen)
-		fmt.Printf("Failed to start server, error: %s\n", err)
-		os.Exit(1)
-	}(ops.Listen)
+	}
 
 	return scraper
 }
@@ -177,7 +197,19 @@ type SendCvReq struct {
 // SendCV sends a cv to the server
 // A request is retried 3 times
 func (s *Scraper) SendCV(cv CV) error {
-	return s.FetchWithRetries("/api/v1/scraper/scanCV", FetchOps{Body: SendCvReq{cv}})
+	err := s.FetchWithRetries("/api/v1/scraper/scanCV", FetchOps{Body: SendCvReq{cv}})
+	if err != nil {
+		return err
+	}
+
+	if s.alternativeServer != nil {
+		err = s.alternativeServer.SendCV(cv)
+		if err != nil {
+			fmt.Printf("Failed to send cv to alternative server, error: %s\n", err)
+		}
+	}
+
+	return nil
 }
 
 // SendCVsListReq is a request to send a cvs list to the server
@@ -187,5 +219,17 @@ type SendCVsListReq struct {
 
 // SendCVsList sends a cvs list to the server
 func (s *Scraper) SendCVsList(cvs []CV) error {
-	return s.FetchWithRetries("/api/v1/scraper/allCVs", FetchOps{Body: SendCVsListReq{cvs}})
+	err := s.FetchWithRetries("/api/v1/scraper/allCVs", FetchOps{Body: SendCVsListReq{cvs}})
+	if err != nil {
+		return err
+	}
+
+	if s.alternativeServer != nil {
+		err = s.alternativeServer.SendCVsList(cvs)
+		if err != nil {
+			fmt.Printf("Failed to send cvs list to alternative server, error: %s\n", err)
+		}
+	}
+
+	return nil
 }
