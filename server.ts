@@ -159,11 +159,25 @@ export class Server {
 		return users
 	}
 
+	private validateCv(cv: Cv) {
+		if (!cv.referenceNumber) throw "referenceNumber is required"
+
+		const dob = cv?.personalDetails?.dob
+		if (dob) {
+			const parsedDob = new Date(dob)
+			const now = new Date()
+			if (now.getFullYear() - parsedDob.getFullYear() < 13) {
+				throw "you must be at least 13 years old to work"
+			}
+		}
+	}
+
 	// Send a scraped CV to RT-CV
 	public async sendCv(cv: Cv) {
 		this.alternativeServer?.sendCv(cv).catch((e) => {
 			console.log("failed to send cv to alternative server,", e)
 		})
+		this.validateCv(cv)
 		const body = { cv }
 		await this.fetchWithRetry("/api/v1/scraper/scanCV", {
 			body,
