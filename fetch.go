@@ -3,6 +3,7 @@ package scraper
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -88,5 +89,10 @@ func (s *Scraper) Fetch(path string, ops FetchOps) error {
 	if ops.Output == nil {
 		return nil
 	}
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("Failed to fetch %s, response: %s", path, string(outputBytes))
+	}
+
 	return json.Unmarshal(outputBytes, ops.Output)
 }
