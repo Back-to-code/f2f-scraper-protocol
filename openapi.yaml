@@ -3,6 +3,9 @@ info:
   version: 1.0.0
   title: A Scraper
   description: This defines how a scraper should behave
+security:
+  - basicAuth: []
+
 paths:
   /health:
     get:
@@ -10,6 +13,8 @@ paths:
       responses:
         200:
           description: server is alive
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
   /check-credentials:
     post:
       description: Check if given credentials are correct
@@ -31,7 +36,7 @@ paths:
                   minLength: 1
       responses:
         200:
-          description: The given credentials are valid
+          description: The given credentials where checked correctly but
           content:
             application/json:
               schema:
@@ -41,40 +46,22 @@ paths:
                 properties:
                   valid:
                     type: boolean
-                    default: true
         401:
-          description: Invalid credentials
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - valid
-                properties:
-                  valid:
-                    type: boolean
-                    default: false
+          $ref: '#/components/responses/UnauthorizedError'
         400:
-          description: Bad request, this is most likely returned when the body is invalid
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+          $ref: '#/components/responses/BadRequest'
         404:
-          description: Not implemented
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-
+          $ref: "#/components/responses/NotImplemented"
         500:
-          description: Internal server error, something within the scraper went wrong that is un related to the provided login credentials thus the given login credentials might be valid or invalid this is just a server failure.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+          $ref: "#/components/responses/InternalServerError"
 
 components:
+  securitySchemes:
+    basicAuth:
+      description: Authenticate using the the same credentials as the credentials in RTCV_SERVER
+      type: http
+      scheme: basic
+
   schemas:
     Error:
       type: object
@@ -83,3 +70,34 @@ components:
       properties:
         error:
           type: string
+
+  responses:
+    UnauthorizedError:
+      description: Basic authentication missing or invalid
+      headers:
+        WWW_Authenticate:
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotImplemented:
+      description: Not implemented
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalServerError:
+      description: Internal server error, something within the scraper went wrong that is un related to the provided login credentials thus the given login credentials might be valid or invalid this is just a server failure.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    BadRequest:
+      description: Bad request, this is most likely returned when the body is invalid
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
