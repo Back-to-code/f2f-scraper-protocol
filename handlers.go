@@ -11,11 +11,12 @@ type Handlers interface {
 // All methods return ErrNotImplemented
 type BaseHandlers struct{}
 
-var baseHandlersCheck Handlers = BaseHandlers{}
+// _baseHandlersCheck is used to check if the BaseHandlers implements Handlers
+var _baseHandlersCheck Handlers = BaseHandlers{}
 
 // ErrNotImplemented is returned when a handler is not implemented
 // All base handlers return this error
-var ErrNotImplemented = errors.New("Not implemented")
+var ErrNotImplemented = errors.New("not implemented")
 
 // CheckCredentials checks the credentials of a user
 func (h BaseHandlers) CheckCredentials(user LoginUser) (bool, error) {

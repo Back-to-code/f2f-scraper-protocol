@@ -74,10 +74,6 @@ components:
   responses:
     UnauthorizedError:
       description: Basic authentication missing or invalid
-      headers:
-        WWW_Authenticate:
-          schema:
-            type: string
       content:
         application/json:
           schema:

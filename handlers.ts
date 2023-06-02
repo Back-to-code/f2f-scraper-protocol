@@ -51,7 +51,7 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 					body.username,
 					body.password
 				)
-				return Response.json({ valid }, { status: valid ? 200 : 401 })
+				return Response.json({ valid })
 			} catch (e) {
 				console.log("Failed to check credentials, error:")
 				console.log(e)

@@ -2,8 +2,10 @@
 
 This library helps you to build a scraper in Deno and is compliant with the [open api spec](./openapi.yaml).
 
-```go
+```ts
 import { Server, Handlers, Cv } from "../mod.ts"
+// Load the .env if present
+import "https://deno.land/std@0.190.0/dotenv/load.ts"
 
 const handlers: Handlers = {
 	checkCredentials(username, password) {
@@ -16,7 +18,7 @@ const server = new Server(handlers, {})
 // Start the server, this returns a promise but will not be awaited as it will basically block forever
 server.startServer()
 
-const loginUsers = server.getUsers(true)
+const loginUsers = await server.getUsers(true)
 console.log("loginUsers", loginUsers)
 
 // Start scraping here

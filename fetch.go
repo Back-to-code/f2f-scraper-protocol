@@ -69,7 +69,7 @@ func (s *Scraper) Fetch(path string, ops FetchOps) error {
 	}
 
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", s.authorizationHeader)
+	req.Header.Set("Authorization", s.apiCredentials.rtcvAuthorizationHeader())
 	for k, v := range ops.Headers {
 		req.Header.Set(k, v)
 	}

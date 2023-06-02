@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
+	"time"
 
 	"bitbucket.org/teamscript/scraper-protocol"
 )
@@ -19,6 +21,8 @@ func (h handelersT) CheckCredentials(user scraper.LoginUser) (bool, error) {
 }
 
 func main() {
+	os.Setenv("RTCV_SERVER", "http://622f293abced696dff424f6f:3tL1yzpMaYy3pyb2yFdrxz5FJFmTQVdt@localhost:4000")
+
 	server := scraper.Start(&handelersT{}, scraper.StartOptions{})
 
 	loginUsers, err := server.GetUsers(true)
@@ -29,7 +33,9 @@ func main() {
 
 	// Start scraping here..
 
-	server.SendCV(scraper.CV{
-		ReferenceNumber: "123456",
-	})
+	// server.SendCV(scraper.CV{
+	// 	ReferenceNumber: "123456",
+	// })
+
+	time.Sleep(time.Hour * 10)
 }

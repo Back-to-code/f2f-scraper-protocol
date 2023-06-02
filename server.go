@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"strings"
-
-	"github.com/gofiber/fiber/v2"
 )
 
 // StartOptions are the options for starting the scraper
@@ -41,11 +38,9 @@ func mustGetEnv(k string, defaultValue string) string {
 
 // Scraper contains all the state of a scraper
 type Scraper struct {
-	server              string
-	apiKeyID            string
-	apiKey              string
-	authorizationHeader string
-	alternativeServer   *Scraper
+	server            string
+	apiCredentials    Credentials
+	alternativeServer *Scraper
 }
 
 // errorResponseT is send by the server when an error occurs
@@ -53,97 +48,70 @@ type errorResponseT struct {
 	Error string `json:"error"`
 }
 
-// Start starts the scraper
-func Start(handelers Handlers, ops StartOptions) *Scraper {
-	server := mustGetEnv("RTCV_SERVER", ops.APIServer)
-	url, err := url.Parse(server)
+func parseApiCredentials(envName string, serverUri string) (Credentials, *url.URL) {
+	url, err := url.Parse(serverUri)
 	if err != nil {
-		fmt.Printf("Invalid RTCV_SERVER url: %s\n", err)
+		fmt.Printf("Invalid $%s url: %s\n", envName, err)
 		os.Exit(1)
 	}
 	if url.User == nil {
-		fmt.Println("RTCV_SERVER url must contain api credentials like: https://key_id:key@example.com")
+		fmt.Println("$" + envName + " url must contain api credentials like: https://key_id:key@example.com")
 		os.Exit(1)
 	}
 	apiKeyID := url.User.Username()
 	apiKey, passwordSet := url.User.Password()
 	if !passwordSet {
-		fmt.Println("RTCV_SERVER url must contain a rt-cv api key id and key, like: https://key_id:key@example.com")
+		fmt.Println("$" + envName + " url must contain a rt-cv api key id and key, like: https://key_id:key@example.com")
 		os.Exit(1)
 	}
 
 	if apiKeyID == "" || apiKey == "" {
-		fmt.Println("RTCV_SERVER url must contain valid api credentials like: https://key_id:key@example.com")
+		fmt.Println("$" + envName + " url must contain valid api credentials like: https://key_id:key@example.com")
 		os.Exit(1)
 	}
 
+	return Credentials{
+		Username: apiKeyID,
+		Password: apiKey,
+	}, url
+}
+
+// Start starts the scraper
+func Start(handelers Handlers, ops StartOptions) *Scraper {
+	server := mustGetEnv("RTCV_SERVER", ops.APIServer)
+	serverCredentials, url := parseApiCredentials("RTCV_SERVER", server)
 	url.User = nil
 	server = url.String()
 
+	var alternativeServerCredentials *Credentials
+	alternativeServer := mightGetEnv("RTCV_ALTERNATIVE_SERVER", ops.AlternativeAPIServer)
+	if !ops.noAlternativeAPIServer && alternativeServer != "" {
+		serverCredentials, _ := parseApiCredentials("RTCV_ALTERNATIVE_SERVER", server)
+		alternativeServerCredentials = &serverCredentials
+	}
+
 	scraper := &Scraper{
-		server:              server,
-		apiKeyID:            apiKeyID,
-		apiKey:              apiKey,
-		authorizationHeader: fmt.Sprintf("Basic %s:%s", apiKeyID, apiKey),
+		server:         server,
+		apiCredentials: serverCredentials,
 	}
 
 	fmt.Println("health checking RT-CV...")
-	err = scraper.FetchWithRetries("/api/v1/health", FetchOps{})
+	err := scraper.FetchWithRetries("/api/v1/health", FetchOps{})
 	if err != nil {
 		fmt.Printf("Failed to ping RT-CV, error: %s\n", err)
 		os.Exit(1)
 	}
 
-	app := fiber.New()
-	app.Get("/health", func(c *fiber.Ctx) error {
-		return c.JSON(map[string]any{"status": "ok"})
-	})
-
-	app.Post("/check-credentials", func(c *fiber.Ctx) error {
-		user := LoginUser{}
-		err := c.BodyParser(&user)
-		if err != nil {
-			return c.Status(400).JSON(errorResponseT{err.Error()})
-		}
-
-		valid, err := handelers.CheckCredentials(user)
-		if err != nil {
-			status := 500
-			if err == ErrNotImplemented {
-				status = 404
-			}
-			return c.Status(status).JSON(errorResponseT{err.Error()})
-		}
-
-		status := 401
-		if valid {
-			status = 200
-		}
-
-		return c.Status(status).JSON(struct {
-			Valid bool `json:"valid"`
-		}{
-			Valid: valid,
-		})
-	})
-
+	alternativeAPIServer := mightGetEnv("RTCV_ALTERNATIVE_SERVER", ops.AlternativeAPIServer)
 	if !ops.doNotStartServer {
-		go func(listen string) {
-			listen = mightGetEnv("SERVER_PORT", listen)
-			if listen == "" {
-				listen = ":3000"
-			} else if !strings.Contains(listen, ":") {
-				// Presume only the port was provided and not the host
-				listen = ":" + listen
-			}
-			err := app.Listen(listen)
-			fmt.Printf("Failed to start server, error: %s\n", err)
-			os.Exit(1)
-		}(ops.Listen)
+		credentials := []Credentials{serverCredentials}
+		if alternativeServerCredentials != nil {
+			credentials = append(credentials, *alternativeServerCredentials)
+		}
+		go apiServer(ops.Listen, handelers, credentials)
 	}
 
 	if ops.noAlternativeAPIServer {
-		alternativeAPIServer := mightGetEnv("RTCV_ALTERNATIVE_SERVER", ops.AlternativeAPIServer)
 		if alternativeAPIServer != "" {
 			scraper.alternativeServer = Start(&BaseHandlers{}, StartOptions{
 				APIServer:              alternativeAPIServer,
@@ -168,7 +136,7 @@ func (s *Scraper) GetUsers(mustAtLeastOneUser bool) ([]LoginUser, error) {
 		Users []LoginUser `json:"users"`
 	}{}
 
-	err := s.Fetch("/api/v1/scraperUsers/"+s.apiKeyID, FetchOps{Output: &resp})
+	err := s.Fetch("/api/v1/scraperUsers/"+s.apiCredentials.Username, FetchOps{Output: &resp})
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +151,7 @@ func (s *Scraper) GetUsers(mustAtLeastOneUser bool) ([]LoginUser, error) {
 		}
 	}
 	if len(resp.Users) > 0 && notSetPasswords == len(resp.Users) {
-		return nil, errors.New("This key uses a unsupported and deprecated scraper user encryption method, please convert your users to the new encryption method via the RT-CV dashboard")
+		return nil, errors.New("this key uses a unsupported and deprecated scraper user encryption method, please convert your users to the new encryption method via the RT-CV dashboard")
 	}
 
 	return resp.Users, nil

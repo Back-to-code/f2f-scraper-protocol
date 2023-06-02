@@ -21,12 +21,18 @@ export interface LoginUser {
 	password: string
 }
 
+interface ServerAuth {
+	username: string
+	password: string
+}
+
 export class Server {
 	private handlers: Handlers
 	private port: number
 	private apiServer: string
 	private apiKeyId: string
-	private authorizationHeader: string
+	private primaryServerAuth: ServerAuth
+	private alternativeServerAuth?: ServerAuth
 	private alternativeServer?: Server
 
 	constructor(handelers: Handlers, options: ServerOptions) {
@@ -51,8 +57,10 @@ export class Server {
 
 		this.apiKeyId = apiServer.username
 		this.apiServer = apiServer.origin
-
-		this.authorizationHeader = `Basic ${apiServer.username}:${apiServer.password}`
+		this.primaryServerAuth = {
+			username: apiServer.username,
+			password: apiServer.password,
+		}
 
 		// Health check the RT-CV server
 		this.health().catch((e) => {
@@ -66,14 +74,28 @@ export class Server {
 				options.alternativeServer
 			)
 			if (alternativeServer) {
-				const handlers = {}
-				this.alternativeServer = new Server(handlers, {
-					apiServer: alternativeServer,
-					alternativeServer: false,
-					port: this.port,
-				})
+				const alternativeServerUrl = new URL(alternativeServer)
+				if (alternativeServerUrl.username && alternativeServerUrl.password) {
+					this.alternativeServerAuth = {
+						username: alternativeServerUrl.username,
+						password: alternativeServerUrl.password,
+					}
+				}
+
+				this.alternativeServer = new Server(
+					{},
+					{
+						apiServer: alternativeServer,
+						alternativeServer: false,
+						port: this.port,
+					}
+				)
 			}
 		}
+	}
+
+	private get authorizationHeader() {
+		return `Basic ${this.primaryServerAuth.username}:${this.primaryServerAuth.password}`
 	}
 
 	// ---
@@ -222,12 +244,52 @@ export class Server {
 	}
 
 	private notFoundResponse() {
-		return new Response("404 Route not found", { status: 404 })
+		return Response.json({ error: "404 Route not found" }, { status: 404 })
+	}
+
+	private unauthorizedResponse() {
+		const error =
+			"401 Unauthorized, either the authorization header is missing or incorrect. Expected `Basic <base64(apiKeyId:apiKey)>` where the apiKeyId is are the same as the scraper uses to authenticat with RT-CV"
+		return Response.json({ error }, { status: 401 })
+	}
+
+	private requestValidAuth(authorization: string | null): Response | undefined {
+		if (!authorization) return this.unauthorizedResponse()
+
+		try {
+			const [type, credentials] = authorization.split(" ")
+			if (type !== "Basic") return this.unauthorizedResponse()
+			const parsedCredentials = atob(credentials)
+			if (!parsedCredentials) return this.unauthorizedResponse()
+			const [username, password] = parsedCredentials.split(":")
+
+			if (
+				this.primaryServerAuth.username == username &&
+				this.primaryServerAuth.password == password
+			)
+				return undefined
+
+			if (
+				this.alternativeServerAuth &&
+				this.alternativeServerAuth.username == username &&
+				this.alternativeServerAuth.password == password
+			)
+				return undefined
+		} catch (e) {
+			console.log("error parsing authorization header,", e)
+		}
+
+		return this.unauthorizedResponse()
 	}
 
 	private handleRequest({ request, respondWith }: Deno.RequestEvent) {
 		const url = new URL(request.url)
 		console.log(url.pathname)
+
+		const authError = this.requestValidAuth(
+			request.headers.get("Authorization")
+		)
+		if (authError) return respondWith(authError)
 
 		const apiHandler = resolveApiHandler(
 			this.handlers,
