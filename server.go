@@ -86,7 +86,7 @@ func Start(handelers Handlers, ops StartOptions) *Scraper {
 	var alternativeServerCredentials *Credentials
 	alternativeServer := mightGetEnv("RTCV_ALTERNATIVE_SERVER", ops.AlternativeAPIServer)
 	if !ops.noAlternativeAPIServer && alternativeServer != "" {
-		serverCredentials, _ := parseApiCredentials("RTCV_ALTERNATIVE_SERVER", server)
+		serverCredentials, _ := parseApiCredentials("RTCV_ALTERNATIVE_SERVER", alternativeServer)
 		alternativeServerCredentials = &serverCredentials
 	}
 
