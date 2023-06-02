@@ -14,3 +14,6 @@ Thumbs.db
 build/
 .flutter-plugins
 .flutter-plugins-dependencies
+
+# Random
+.env
