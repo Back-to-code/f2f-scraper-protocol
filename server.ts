@@ -136,14 +136,16 @@ export class Server {
 			},
 		}
 
-		if (options.body && options.body instanceof FormData) {
-			fetchOptions.body = options.body
-			// Content-Type will be set automatically by the fetch method
-		} else {
-			fetchOptions.body = JSON.stringify(options.body)
-			fetchOptions.headers = {
-				...fetchOptions.headers,
-				"Content-Type": "application/json",
+		if (options.body) {
+			if (options.body instanceof FormData) {
+				fetchOptions.body = options.body
+				// Content-Type will be set automatically by the fetch method
+			} else {
+				fetchOptions.body = JSON.stringify(options.body)
+				fetchOptions.headers = {
+					...fetchOptions.headers,
+					"Content-Type": "application/json",
+				}
 			}
 		}
 
@@ -200,9 +202,8 @@ export class Server {
 			console.log("failed to send cv to alternative server,", e)
 		})
 		this.validateCv(cv)
-		const body = { cv }
 		await this.fetchWithRetry("/api/v1/scraper/scanCV", {
-			body,
+			body: { cv },
 			method: "POST",
 		})
 	}
