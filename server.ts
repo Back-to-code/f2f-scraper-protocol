@@ -8,6 +8,7 @@ export interface ServerOptions {
 	// Optional:
 	alternativeServer?: string | false // If not set will try to use RTCV_ALTERNATIVE_SERVER env variable, if set to false will disable alternative server
 	port?: number // If not set will try to use SERVER_PORT or default to: 3000
+	noHealthChecks?: boolean // If set to true will disable health checks on the RT-CV server
 }
 
 export interface FetchOptions {
@@ -63,10 +64,11 @@ export class Server {
 		}
 
 		// Health check the RT-CV server
-		this.health().catch((e) => {
-			console.log(`Failed to ping RT-CV (${apiServer}), error:`, e)
-			Deno.exit(1)
-		})
+		if (!options.noHealthChecks)
+			this.health().catch((e) => {
+				console.log(`Failed to ping RT-CV (${apiServer}), error:`, e)
+				Deno.exit(1)
+			})
 
 		if (options.alternativeServer !== false) {
 			const alternativeServer = mightGetEnv(
@@ -197,13 +199,28 @@ export class Server {
 	}
 
 	// Send a scraped CV to RT-CV
-	public async sendCv(cv: Cv) {
-		this.alternativeServer?.sendCv(cv).catch((e) => {
+	public async sendCv(cv: Cv, preValidation = true) {
+		if (preValidation) this.validateCv(cv)
+
+		this.alternativeServer?.sendCv(cv, false).catch((e) => {
 			console.log("failed to send cv to alternative server,", e)
 		})
-		this.validateCv(cv)
+
 		await this.fetchWithRetry("/api/v1/scraper/scanCV", {
 			body: { cv },
+			method: "POST",
+		})
+	}
+
+	public async sendCvsList(cvs: Array<Cv>, preValidation = true) {
+		if (preValidation) for (const cv of cvs) this.validateCv(cv)
+
+		this.alternativeServer?.sendCvsList(cvs, false).catch((e) => {
+			console.log("failed to send cvs list to alternative server,", e)
+		})
+		const body = { cvs }
+		await this.fetchWithRetry("/api/v1/scraper/allCVs", {
+			body,
 			method: "POST",
 		})
 	}
