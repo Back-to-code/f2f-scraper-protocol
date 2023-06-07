@@ -169,7 +169,6 @@ func (s *Scraper) SendCV(cv CV) error {
 	}
 
 	if s.alternativeServer != nil {
-		fmt.Println("sending cv to alternative server,", cv.ReferenceNumber)
 		err = s.alternativeServer.SendCV(cv)
 		if err != nil {
 			fmt.Printf("Failed to send cv to alternative server, error: %s\n", err)
