@@ -48,8 +48,8 @@ type errorResponseT struct {
 	Error string `json:"error"`
 }
 
-func parseApiCredentials(envName string, serverUri string) (Credentials, *url.URL) {
-	url, err := url.Parse(serverUri)
+func parseAPICredentials(envName string, serverURI string) (Credentials, *url.URL) {
+	url, err := url.Parse(serverURI)
 	if err != nil {
 		fmt.Printf("Invalid $%s url: %s\n", envName, err)
 		os.Exit(1)
@@ -79,14 +79,14 @@ func parseApiCredentials(envName string, serverUri string) (Credentials, *url.UR
 // Start starts the scraper
 func Start(handelers Handlers, ops StartOptions) *Scraper {
 	server := mustGetEnv("RTCV_SERVER", ops.APIServer)
-	serverCredentials, url := parseApiCredentials("RTCV_SERVER", server)
+	serverCredentials, url := parseAPICredentials("RTCV_SERVER", server)
 	url.User = nil
 	server = url.String()
 
 	var alternativeServerCredentials *Credentials
 	alternativeServer := mightGetEnv("RTCV_ALTERNATIVE_SERVER", ops.AlternativeAPIServer)
 	if !ops.noAlternativeAPIServer && alternativeServer != "" {
-		serverCredentials, _ := parseApiCredentials("RTCV_ALTERNATIVE_SERVER", alternativeServer)
+		serverCredentials, _ := parseAPICredentials("RTCV_ALTERNATIVE_SERVER", alternativeServer)
 		alternativeServerCredentials = &serverCredentials
 	}
 
@@ -111,14 +111,12 @@ func Start(handelers Handlers, ops StartOptions) *Scraper {
 		go apiServer(ops.Listen, handelers, credentials)
 	}
 
-	if ops.noAlternativeAPIServer {
-		if alternativeAPIServer != "" {
-			scraper.alternativeServer = Start(&BaseHandlers{}, StartOptions{
-				APIServer:              alternativeAPIServer,
-				doNotStartServer:       true,
-				noAlternativeAPIServer: true,
-			})
-		}
+	if !ops.noAlternativeAPIServer && alternativeAPIServer != "" {
+		scraper.alternativeServer = Start(&BaseHandlers{}, StartOptions{
+			APIServer:              alternativeAPIServer,
+			doNotStartServer:       true,
+			noAlternativeAPIServer: true,
+		})
 	}
 
 	return scraper
@@ -171,6 +169,7 @@ func (s *Scraper) SendCV(cv CV) error {
 	}
 
 	if s.alternativeServer != nil {
+		fmt.Println("sending cv to alternative server,", cv.ReferenceNumber)
 		err = s.alternativeServer.SendCV(cv)
 		if err != nil {
 			fmt.Printf("Failed to send cv to alternative server, error: %s\n", err)

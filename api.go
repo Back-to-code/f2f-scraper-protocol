@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/basicauth"
 )
 
+// Credentials contains a username and password combo
 type Credentials struct {
 	Username string
 	Password string
