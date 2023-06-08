@@ -3,6 +3,10 @@
 This repo describes how a scraper should work and gives helper libaries for building a scraper
 
 - [Open API Spec](./openapi.yaml) *(scraper should implement this and is implemented by the libaries under here)*
+- [Lib spec](./lib_spec.md)
+
+## Libs:
+
 - [GoLang lib](./README_go.md)
 - [Deno lib](./README_deno.md)
 
