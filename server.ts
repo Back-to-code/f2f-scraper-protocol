@@ -1,4 +1,9 @@
-import { resolveApiHandler, Handlers } from "./handlers.ts"
+import {
+	ExternalHandler,
+	Handlers,
+	resolveApiHandler,
+	resolveExternalHandler,
+} from "./handlers.ts"
 import type { Cv } from "./cv.ts"
 
 export interface ServerOptions {
@@ -9,6 +14,8 @@ export interface ServerOptions {
 	alternativeServer?: string | false // If not set will try to use RTCV_ALTERNATIVE_SERVER env variable, if set to false will disable alternative server
 	port?: number // If not set will try to use SERVER_PORT or default to: 3000
 	noHealthChecks?: boolean // If set to true will disable health checks on the RT-CV server
+
+	externalHandlers?: ExternalHandler[] // If set will add external handlers to the server
 }
 
 export interface FetchOptions {
@@ -35,9 +42,10 @@ export class Server {
 	private primaryServerAuth: ServerAuth
 	private alternativeServerAuth?: ServerAuth
 	private alternativeServer?: Server
+	private externalHandlers: Map<string, ExternalHandlerCallback> = new Map()
 
-	constructor(handelers: Handlers, options: ServerOptions) {
-		this.handlers = handelers
+	constructor(handlers: Handlers, options: ServerOptions) {
+		this.handlers = handlers
 
 		const potentialsServerPort = mightGetEnv("SERVER_PORT")
 		if (potentialsServerPort) {
@@ -64,11 +72,20 @@ export class Server {
 		}
 
 		// Health check the RT-CV server
-		if (!options.noHealthChecks)
+		if (!options.noHealthChecks) {
 			this.health().catch((e) => {
 				console.log(`Failed to ping RT-CV (${apiServer}), error:`, e)
 				Deno.exit(1)
 			})
+		}
+
+		if (options.externalHandlers) {
+			const { ok, errors } = this.addCustomHandler(options.externalHandlers)
+			if (!ok) {
+				console.log("Failed to add external handlers:", errors)
+				Deno.exit(1)
+			}
+		}
 
 		if (options.alternativeServer !== false) {
 			const alternativeServer = mightGetEnv(
@@ -250,6 +267,39 @@ export class Server {
 		}
 	}
 
+	/**
+  addHandler adds a handler to the server
+
+  Paramaters:
+  - externalHandlers: an array of ExternalHandler objects
+
+  Returns:
+    - an object with the following properties:
+      - ok: a boolean indicating whether the handlers were added successfully
+      - errors: an array of strings containing any errors that occurred
+  */
+	public addCustomHandler(externalHandlers: ExternalHandler[]): {
+		ok: boolean
+		errors: string[]
+	} {
+		const errors: string[] = []
+		for (const handler of externalHandlers) {
+			const { path, method, handler: handlerFunc } = handler
+			const methodPathString = `${method} ${path}`
+
+			if (this.externalHandlers.has(methodPathString)) {
+				errors.push(`Handler for ${methodPathString} already exists`)
+			}
+
+			this.externalHandlers.set(methodPathString, handlerFunc)
+		}
+
+		return {
+			ok: errors.length === 0,
+			errors,
+		}
+	}
+
 	// ---
 	// Private methods
 	// ---
@@ -284,15 +334,17 @@ export class Server {
 			if (
 				this.primaryServerAuth.username == username &&
 				this.primaryServerAuth.password == password
-			)
+			) {
 				return undefined
+			}
 
 			if (
 				this.alternativeServerAuth &&
 				this.alternativeServerAuth.username == username &&
 				this.alternativeServerAuth.password == password
-			)
+			) {
 				return undefined
+			}
 		} catch (e) {
 			console.log("error parsing authorization header,", e)
 		}
@@ -309,11 +361,20 @@ export class Server {
 		)
 		if (authError) return respondWith(authError)
 
-		const apiHandler = resolveApiHandler(
+		let apiHandler = resolveApiHandler(
 			this.handlers,
 			request.method,
 			url.pathname
 		)
+
+		if (!apiHandler) {
+			apiHandler = resolveExternalHandler(
+				this.externalHandlers,
+				request.method,
+				url.pathname
+			)
+		}
+
 		if (!apiHandler) return respondWith(this.notFoundResponse())
 
 		const response = apiHandler(request)

@@ -1,3 +1,13 @@
+export type ExternalHandlerCallback = (
+	request: Request
+) => PotentialPromise<Response>
+
+export interface ExternalHandler {
+	method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH"
+	path: string
+	handler: ExternalHandlerCallback
+}
+
 export type PotentialPromise<T> = T | Promise<T>
 
 export interface Handlers {
@@ -17,7 +27,7 @@ export function resolveApiHandler(
 	handlers: Handlers,
 	method: string,
 	path: string
-): ApiHandler {
+): ApiHandler | undefined {
 	return apiHandlers(handlers)[`${method} ${path}`]
 }
 
@@ -62,4 +72,18 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 			}
 		},
 	}
+}
+
+// Finds the handler for the given method and path, or returns undefined if there is
+// no handler.
+export function resolveExternalHandler(
+	handlers: Map<string, ExternalHandlerCallback>,
+	method: string,
+	path: string
+): ApiHandler | undefined {
+	if (handlers.has(`${method} ${path}`)) {
+		return handlers.get(`${method} ${path}`)!
+	}
+
+	return undefined
 }
