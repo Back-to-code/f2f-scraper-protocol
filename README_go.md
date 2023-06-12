@@ -50,6 +50,60 @@ func main() {
 }
 ```
 
+## Adding custom handlers
+
+The scraper protocol supports extending the protocol with custom handlers.
+
+Let' add a route that returns 'Hello World' when visiting the url `/hello`
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+
+	"bitbucket.org/teamscript/scraper-protocol"
+)
+
+type handelersT struct {
+    // BaseHandlers is added here so implementation of all handlers is not required
+    // BeseHandlers can be removed but will require you to implement all handlers
+    // If you look at the code of BaseHandlers you can see their default implementations
+    scraper.BaseHandlers
+}
+
+
+// CheckCredentials implements the scraper.BaseHandlers interface
+func (h handelersT) CheckCredentials(user scraper.LoginUser) (bool, error) {
+    return nil, ErrNotImplemented
+}
+
+func main() {
+	server := scraper.Start(&handelersT{}, scraper.StartOptions{
+		FiberOptionsFn: func(app *fiber.App) {
+			app.Get("/hello", func(c *fiber.Ctx) error {
+				return c.SendString("Hello World")
+			})
+		},
+	})
+
+	loginUsers, err := server.GetUsers(true)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	fmt.Printf("%+v\n", loginUsers)
+
+
+
+	// Start scraping here..
+
+	server.SendCV(scraper.CV{
+		ReferenceNumber: "123456",
+	})
+}
+```
+
 ## Library docs
 
 ```bash
@@ -60,4 +114,5 @@ godoc
 Now you can visit [localhost:6060/pkg/bitbucket.org/teamscript/scraper-protocol](http://localhost:6060/pkg/bitbucket.org/teamscript/scraper-protocol)
 
 Some things i recomment you to look at:
+
 - [Scraper and it's methods](http://localhost:6060/pkg/bitbucket.org/teamscript/scraper-protocol/#Scraper)

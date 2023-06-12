@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/gofiber/fiber/v2"
+
 	"bitbucket.org/teamscript/scraper-protocol"
 )
 
@@ -23,7 +25,13 @@ func (h handelersT) CheckCredentials(user scraper.LoginUser) (bool, error) {
 func main() {
 	os.Setenv("RTCV_SERVER", "http://622f293abced696dff424f6f:3tL1yzpMaYy3pyb2yFdrxz5FJFmTQVdt@localhost:4000")
 
-	server := scraper.Start(&handelersT{}, scraper.StartOptions{})
+	server := scraper.Start(&handelersT{}, scraper.StartOptions{
+		FiberOptionsFn: func(app *fiber.App) {
+			app.Get("/hello", func(c *fiber.Ctx) error {
+				return c.SendString("Hello World")
+			})
+		},
+	})
 
 	loginUsers, err := server.GetUsers(true)
 	if err != nil {

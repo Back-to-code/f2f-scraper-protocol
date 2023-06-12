@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 // StartOptions are the options for starting the scraper
@@ -18,6 +20,14 @@ type StartOptions struct {
 	// Internal options
 	noAlternativeAPIServer bool // If true will disable the alternative server, mainly used
 	doNotStartServer       bool // If true will not start the scraper api endpoint
+
+	// Fiber options
+	//
+	// A function that will be called with a pointer to a fiber app instance before
+	// starting the server.
+	//
+	// This can be used to add custom routes or modify other behavior of the server.
+	FiberOptionsFn func(*fiber.App)
 }
 
 func mightGetEnv(k string, defaultValue string) string {
@@ -77,7 +87,7 @@ func parseAPICredentials(envName string, serverURI string) (Credentials, *url.UR
 }
 
 // Start starts the scraper
-func Start(handelers Handlers, ops StartOptions) *Scraper {
+func Start(handlers Handlers, ops StartOptions) *Scraper {
 	server := mustGetEnv("RTCV_SERVER", ops.APIServer)
 	serverCredentials, url := parseAPICredentials("RTCV_SERVER", server)
 	url.User = nil
@@ -108,7 +118,7 @@ func Start(handelers Handlers, ops StartOptions) *Scraper {
 		if alternativeServerCredentials != nil {
 			credentials = append(credentials, *alternativeServerCredentials)
 		}
-		go apiServer(ops.Listen, handelers, credentials)
+		go apiServer(ops.Listen, handlers, credentials, ops.FiberOptionsFn)
 	}
 
 	if !ops.noAlternativeAPIServer && alternativeAPIServer != "" {
@@ -116,6 +126,8 @@ func Start(handelers Handlers, ops StartOptions) *Scraper {
 			APIServer:              alternativeAPIServer,
 			doNotStartServer:       true,
 			noAlternativeAPIServer: true,
+
+			FiberOptionsFn: ops.FiberOptionsFn,
 		})
 	}
 
