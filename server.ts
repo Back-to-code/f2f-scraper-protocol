@@ -80,10 +80,11 @@ export class Server {
 		}
 
 		if (options.externalHandlers) {
-			const { ok, errors } = this.addCustomHandler(options.externalHandlers)
-			if (!ok) {
-				console.log("Failed to add external handlers:", errors)
-				Deno.exit(1)
+			try {
+				this.addCustomHandler(options.externalHandlers);
+			} catch (e) {
+				console.log("Failed to add external handlers, error:", e);
+				Deno.exit(1);
 			}
 		}
 
@@ -268,35 +269,24 @@ export class Server {
 	}
 
 	/**
-  addHandler adds a handler to the server
+	addHandler adds a handler to the server
 
-  Paramaters:
-  - externalHandlers: an array of ExternalHandler objects
+	Paramaters:
+	- externalHandlers: an array of ExternalHandler objects
 
-  Returns:
-    - an object with the following properties:
-      - ok: a boolean indicating whether the handlers were added successfully
-      - errors: an array of strings containing any errors that occurred
-  */
-	public addCustomHandler(externalHandlers: ExternalHandler[]): {
-		ok: boolean
-		errors: string[]
-	} {
-		const errors: string[] = []
+	Throws:
+	- Error: if the handler is already registered
+	*/
+	public addCustomHandler(externalHandlers: ExternalHandler[]) {
 		for (const handler of externalHandlers) {
-			const { path, method, handler: handlerFunc } = handler
-			const methodPathString = `${method} ${path}`
+			const { path, method, handler: handlerFunc } = handler;
+			const methodPathString = `${method} ${path}`;
 
 			if (this.externalHandlers.has(methodPathString)) {
-				errors.push(`Handler for ${methodPathString} already exists`)
+				throw new Error(`Handler already exists for ${methodPathString}`);
 			}
 
-			this.externalHandlers.set(methodPathString, handlerFunc)
-		}
-
-		return {
-			ok: errors.length === 0,
-			errors,
+			this.externalHandlers.set(methodPathString, handlerFunc);
 		}
 	}
 
