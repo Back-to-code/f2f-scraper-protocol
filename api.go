@@ -64,7 +64,9 @@ func apiServer(listen string, handelers Handlers, credentials []Credentials, fib
 		})
 	})
 
-	fiberOpsCallback(app)
+	if fiberOpsCallback != nil {
+		fiberOpsCallback(app)
+	}
 
 	listen = mightGetEnv("SERVER_PORT", listen)
 	if listen == "" {
