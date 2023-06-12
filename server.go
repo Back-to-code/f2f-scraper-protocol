@@ -118,7 +118,7 @@ func Start(handlers Handlers, ops StartOptions) *Scraper {
 		if alternativeServerCredentials != nil {
 			credentials = append(credentials, *alternativeServerCredentials)
 		}
-		go apiServer(ops.Listen, handlers, credentials)
+		go apiServer(ops.Listen, handlers, credentials, ops.FiberOptionsFn)
 	}
 
 	if !ops.noAlternativeAPIServer && alternativeAPIServer != "" {
@@ -126,6 +126,8 @@ func Start(handlers Handlers, ops StartOptions) *Scraper {
 			APIServer:              alternativeAPIServer,
 			doNotStartServer:       true,
 			noAlternativeAPIServer: true,
+
+			FiberOptionsFn: ops.FiberOptionsFn,
 		})
 	}
 

@@ -21,7 +21,7 @@ func (c Credentials) rtcvAuthorizationHeader() string {
 
 var errUnauthorized = "401 Unauthorized, either the authorization header is missing or incorrect. Expected `Basic <base64(apiKeyId:apiKey)>` where the apiKeyId is are the same as the scraper uses to authenticat with RT-CV"
 
-func apiServer(listen string, handelers Handlers, credentials []Credentials) {
+func apiServer(listen string, handelers Handlers, credentials []Credentials, fiberOpsCallback func(*fiber.App)) {
 	app := fiber.New()
 	app.Use(basicauth.New(basicauth.Config{
 		Authorizer: func(user, pass string) bool {
@@ -63,6 +63,8 @@ func apiServer(listen string, handelers Handlers, credentials []Credentials) {
 			Valid: valid,
 		})
 	})
+
+	fiberOpsCallback(app)
 
 	listen = mightGetEnv("SERVER_PORT", listen)
 	if listen == "" {
