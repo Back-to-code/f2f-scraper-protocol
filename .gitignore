@@ -17,3 +17,5 @@ build/
 
 # Random
 .env
+# When running go build in the examples folder it generates an executable named "examples"
+examples*
