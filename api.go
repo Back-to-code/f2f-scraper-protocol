@@ -41,6 +41,30 @@ func apiServer(listen string, handelers Handlers, credentials []Credentials, fib
 		return c.JSON(map[string]any{"status": "ok"})
 	})
 
+	app.Post("/cv", func(c *fiber.Ctx) error {
+		body := struct {
+			ReferenceNr string `json:"referenceNr"`
+		}{}
+		err := c.BodyParser(&body)
+		if err != nil {
+			return c.Status(400).JSON(errorResponseT{err.Error()})
+		}
+
+		cv, err := handelers.CV(body.ReferenceNr)
+		if err != nil {
+			status := 500
+			if err == ErrNotImplemented {
+				status = 404
+			}
+			return c.Status(status).JSON(errorResponseT{err.Error()})
+		}
+
+		response := struct {
+			CV CV `json:"cv"`
+		}{CV: cv}
+		return c.JSON(response)
+	})
+
 	app.Post("/check-credentials", func(c *fiber.Ctx) error {
 		user := LoginUser{}
 		err := c.BodyParser(&user)

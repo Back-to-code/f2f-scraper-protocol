@@ -14,7 +14,44 @@ paths:
         200:
           description: server is alive
         401:
-          $ref: '#/components/responses/UnauthorizedError'
+          $ref: "#/components/responses/UnauthorizedError"
+  /cv:
+    post:
+      description: Get a single CV by it's reference number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - referenceNr
+              properties:
+                referenceNr:
+                  type: string
+                  minLength: 1
+      responses:
+        200:
+          description: The CV
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - cv
+                properties:
+                  cv:
+                    description: Contians the cv in the, the format of the cv is described by the RT-CV server https://bitbucket.org/teamscript/rt-cv/src/main/models/cv.go#lines-18
+                    type: object
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/UnauthorizedError"
+        404:
+          $ref: "#/components/responses/NotImplemented"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+
   /check-credentials:
     post:
       description: Check if given credentials are correct
@@ -46,10 +83,10 @@ paths:
                 properties:
                   valid:
                     type: boolean
-        401:
-          $ref: '#/components/responses/UnauthorizedError'
         400:
-          $ref: '#/components/responses/BadRequest'
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/UnauthorizedError"
         404:
           $ref: "#/components/responses/NotImplemented"
         500:
@@ -83,7 +120,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Error'
+            $ref: "#/components/schemas/Error"
     InternalServerError:
       description: Internal server error, something within the scraper went wrong that is un related to the provided login credentials thus the given login credentials might be valid or invalid this is just a server failure.
       content:
@@ -96,4 +133,3 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
-

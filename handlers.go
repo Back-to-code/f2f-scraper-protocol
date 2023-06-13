@@ -5,6 +5,7 @@ import "errors"
 // Handlers is the interface that must be implemented by a scraper
 type Handlers interface {
 	CheckCredentials(user LoginUser) (valid bool, err error)
+	CV(referenceNr string) (cv CV, err error)
 }
 
 // BaseHandlers implements Handlers can be used as base for all handlers and implemenets Handlers
@@ -21,4 +22,9 @@ var ErrNotImplemented = errors.New("not implemented")
 // CheckCredentials checks the credentials of a user
 func (h BaseHandlers) CheckCredentials(user LoginUser) (bool, error) {
 	return false, ErrNotImplemented
+}
+
+// CV returns the CV of a user
+func (h BaseHandlers) CV(referenceNr string) (CV, error) {
+	return CV{}, ErrNotImplemented
 }
