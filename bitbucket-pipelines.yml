@@ -1,14 +1,23 @@
+definitions:
+  buildGoStep: &buildGo
+    name: Check Go lib
+    image: golang:1.20
+    script:
+      - cd examples
+      - go build
+  buildDenoStep: &buildDeno
+    name: Check Deno lib
+    image: runcitadel/deno:v1.29.3
+    script:
+      - cd examples
+      - deno check main.ts
+
 pipelines:
-  default:
-    - step:
-        name: Check Go lib
-        image: golang:1.20
-        script:
-          - cd examples
-          - go build
-    - step:
-        name: Check Deno lib
-        image: runcitadel/deno:v1.29.3
-        script:
-          - cd examples
-          - deno check main.ts
+  pull-requests:
+    "**":
+      - step: *buildGo
+      - step: *buildDeno
+  branches:
+    main:
+      - step: *buildGo
+      - step: *buildDeno
