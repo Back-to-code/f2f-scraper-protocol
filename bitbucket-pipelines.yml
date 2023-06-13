@@ -7,7 +7,7 @@ definitions:
       - go build
   buildDenoStep: &buildDeno
     name: Check Deno lib
-    image: runcitadel/deno:v1.29.3
+    image: denoland/deno:1.34.2
     script:
       - cd examples
       - deno check main.ts
