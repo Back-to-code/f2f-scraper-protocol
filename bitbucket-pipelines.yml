@@ -15,9 +15,11 @@ definitions:
 pipelines:
   pull-requests:
     "**":
-      - step: *buildGo
-      - step: *buildDeno
+      - parallel:
+        - step: *buildGo
+        - step: *buildDeno
   branches:
     main:
-      - step: *buildGo
-      - step: *buildDeno
+      - parallel:
+        - step: *buildGo
+        - step: *buildDeno
