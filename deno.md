@@ -8,6 +8,12 @@ import { Server, Handlers, Cv } from "../mod.ts"
 import "https://deno.land/std@0.190.0/dotenv/load.ts"
 
 const handlers: Handlers = {
+	cv: (referenceNr: string) => {
+		// fetch a spesific cv based on the referenceNr send by the scraper to RT-CV
+		return {
+			referenceNumber: referenceNr,
+		}
+	},
 	checkCredentials(username, password) {
 		return username == "root" && password == "toor"
 	},

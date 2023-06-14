@@ -15,7 +15,7 @@ import (
 	"fmt"
 	"log"
 
-	"bitbucket.org/teamscript/scraper-protocol"
+	scraper "bitbucket.org/teamscript/scraper-protocol/go"
 )
 
 type handelersT struct {

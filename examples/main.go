@@ -8,7 +8,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"bitbucket.org/teamscript/scraper-protocol"
+	scraper "bitbucket.org/teamscript/scraper-protocol/go"
 )
 
 type handelersT struct {
