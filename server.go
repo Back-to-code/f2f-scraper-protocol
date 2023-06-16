@@ -211,3 +211,16 @@ func (s *Scraper) SendCVsList(cvs []CV) error {
 
 	return nil
 }
+
+func (s *Scraper) GetActiveProfiles() ([]Profile, error) {
+	resp := []Profile{}
+
+	err := s.Fetch("/api/v1/profiles/active", FetchOps{
+		Output: &resp,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
