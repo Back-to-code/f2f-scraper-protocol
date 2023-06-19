@@ -211,3 +211,15 @@ func (s *Scraper) SendCVsList(cvs []CV) error {
 
 	return nil
 }
+
+// GetActiveProfiles returns the active profiles from RT-CV
+//
+// Note: This function requires that the auth key has the `information obtainer` role
+func (s *Scraper) GetActiveProfiles() ([]Profile, error) {
+	resp := []Profile{}
+
+	err := s.FetchWithRetries("/api/v1/profiles/active", FetchOps{
+		Output: &resp,
+	})
+	return resp, err
+}
