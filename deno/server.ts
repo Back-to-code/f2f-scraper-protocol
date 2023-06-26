@@ -15,6 +15,7 @@ export interface ServerOptions {
 	alternativeServer?: string | false // If not set will try to use RTCV_ALTERNATIVE_SERVER env variable, if set to false will disable alternative server
 	port?: number // If not set will try to use SERVER_PORT or default to: 3000
 	noHealthChecks?: boolean // If set to true will disable health checks on the RT-CV server
+	skipSlugCheck?: boolean // If set to true will not check and update the slug on the RT-CV server
 
 	customHandlers?: CustomHandler[] // If set will add external handlers to the server
 }
@@ -45,7 +46,7 @@ export class Server {
 	private alternativeServer?: Server
 	private externalHandlers: Map<string, CustomHandlerCallback> = new Map()
 
-	constructor(handlers: Handlers, options: ServerOptions) {
+	constructor(slug: string, handlers: Handlers, options: ServerOptions) {
 		this.handlers = handlers
 
 		const potentialsServerPort = mightGetEnv("SERVER_PORT")
@@ -65,6 +66,13 @@ export class Server {
 			Deno.exit(1)
 		}
 
+		if (slug === "" && !options.skipSlugCheck) {
+			console.log(
+				"Error: slug is required for the scraper to be identifiable! If you are sure that you want to run the scraper without a slug, use the skipSlugCheck option in options."
+			)
+			Deno.exit(1)
+		}
+
 		this.apiKeyId = apiServer.username
 		this.apiServer = apiServer.origin
 		this.primaryServerAuth = {
@@ -79,6 +87,8 @@ export class Server {
 				Deno.exit(1)
 			})
 		}
+
+		this.setSlug(slug)
 
 		if (options.customHandlers) {
 			try {
@@ -96,7 +106,10 @@ export class Server {
 			)
 			if (alternativeServer) {
 				const alternativeServerUrl = new URL(alternativeServer)
-				if (alternativeServerUrl.username && alternativeServerUrl.password) {
+				if (
+					alternativeServerUrl.username &&
+					alternativeServerUrl.password
+				) {
 					this.alternativeServerAuth = {
 						username: alternativeServerUrl.username,
 						password: alternativeServerUrl.password,
@@ -104,6 +117,7 @@ export class Server {
 				}
 
 				this.alternativeServer = new Server(
+					slug,
 					{},
 					{
 						apiServer: alternativeServer,
@@ -192,7 +206,9 @@ export class Server {
 			"/api/v1/scraperUsers/" + this.apiKeyId
 		)
 
-		if (users.length == 0 && mustBeAtLeastOneUser) throw "No login users found"
+		if (users.length == 0 && mustBeAtLeastOneUser) {
+			throw "No login users found"
+		}
 
 		const usersWithoutPasswords = users.filter(
 			(user: LoginUser) => !user.password
@@ -284,7 +300,9 @@ export class Server {
 			const methodPathString = `${method} ${path}`
 
 			if (this.externalHandlers.has(methodPathString)) {
-				throw new Error(`Handler already exists for ${methodPathString}`)
+				throw new Error(
+					`Handler already exists for ${methodPathString}`
+				)
 			}
 
 			this.externalHandlers.set(methodPathString, handlerFunc)
@@ -312,7 +330,9 @@ export class Server {
 		return Response.json({ error }, { status: 401 })
 	}
 
-	private requestValidAuth(authorization: string | null): Response | undefined {
+	private requestValidAuth(
+		authorization: string | null
+	): Response | undefined {
 		if (!authorization) return this.unauthorizedResponse()
 
 		try {
@@ -371,6 +391,34 @@ export class Server {
 		const response = apiHandler(request)
 		if (!response) return respondWith(this.notFoundResponse())
 		respondWith(response)
+	}
+
+	private async setSlug(slug: string) {
+		console.log("Setting slug in rt-cv...")
+
+		let slugResponse: {
+			slug: string
+			oldSlug: string
+			overwroteExisting: boolean
+		}
+		try {
+			slugResponse = await this.fetchWithRetry(
+				"/api/v1/scraper/setSlug",
+				{
+					method: "PUT",
+					body: { slug: slug },
+				}
+			)
+		} catch (e) {
+			console.log("error setting slug,", e)
+			return
+		}
+
+		if (slugResponse.overwroteExisting) {
+			console.log(
+				`Warning: Overwrote existing slug ('${slugResponse.oldSlug}') with '${slugResponse.slug}'`
+			)
+		}
 	}
 }
 

@@ -16,6 +16,7 @@ type StartOptions struct {
 	// Optional
 	Listen               string // If not set will try to use $SERVER_PORT or default to: ":3000"
 	AlternativeAPIServer string // If not set will try to use $RTCV_ALTERNATIVE_SERVER env variable
+	SkipSlugCheck        bool   // If true will skip the slug check
 
 	// Internal options
 	noAlternativeAPIServer bool // If true will disable the alternative server, mainly used
@@ -87,11 +88,23 @@ func parseAPICredentials(envName string, serverURI string) (Credentials, *url.UR
 }
 
 // Start starts the scraper
-func Start(handlers Handlers, ops StartOptions) *Scraper {
+//
+// # Arguments
+//
+//   - `slug` is the identifying slug of the scraper, it should be a unique and descriptive name for the scraper.
+//     It is used by other services such as the f2f app to identify the scraper and enable specific functionality for this scraper if necessary.
+//   - `handlers` is a struct containing the handlers for the scraper. These handlers implement scraper functionality such as adding credentials.
+//   - `ops` is a struct containing options for the scraper.
+func Start(slug string, handlers Handlers, ops StartOptions) *Scraper {
 	server := mustGetEnv("RTCV_SERVER", ops.APIServer)
 	serverCredentials, url := parseAPICredentials("RTCV_SERVER", server)
 	url.User = nil
 	server = url.String()
+
+	if slug == "" && !ops.SkipSlugCheck {
+		fmt.Println("Error: slug is required for the scraper to be identifiable! If you are sure that you want to run the scraper without a slug, use the SkipSlugCheck option in StartOptions.")
+		os.Exit(1)
+	}
 
 	var alternativeServerCredentials *Credentials
 	alternativeServer := mightGetEnv("RTCV_ALTERNATIVE_SERVER", ops.AlternativeAPIServer)
@@ -112,6 +125,31 @@ func Start(handlers Handlers, ops StartOptions) *Scraper {
 		os.Exit(1)
 	}
 
+	if !ops.SkipSlugCheck {
+		fmt.Println("Setting slug in rt-cv...")
+		slugResponse := slugUpdateResponse{}
+		slugBody := slugBody{Slug: slug}
+
+		err = scraper.FetchWithRetries("/api/v1/scraper/setSlug", FetchOps{
+			Method: "PUT",
+			Body:   slugBody,
+			Output: &slugResponse,
+		})
+		if err != nil {
+			fmt.Printf("Failed to set slug, error: %s\n", err)
+			os.Exit(1)
+		}
+
+		if slugResponse.Slug != slug {
+			fmt.Printf("Failed to set slug. Received slug that was different from what was requested\n")
+			os.Exit(1)
+		}
+
+		if slugResponse.OverwroteExisting {
+			fmt.Printf("Warning: Overwrote an existing slug ('%s') while setting slug to '%s'.\n", slugResponse.OldSlug, slugResponse.Slug)
+		}
+	}
+
 	alternativeAPIServer := mightGetEnv("RTCV_ALTERNATIVE_SERVER", ops.AlternativeAPIServer)
 	if !ops.doNotStartServer {
 		credentials := []Credentials{serverCredentials}
@@ -122,7 +160,7 @@ func Start(handlers Handlers, ops StartOptions) *Scraper {
 	}
 
 	if !ops.noAlternativeAPIServer && alternativeAPIServer != "" {
-		scraper.alternativeServer = Start(&BaseHandlers{}, StartOptions{
+		scraper.alternativeServer = Start(slug, &BaseHandlers{}, StartOptions{
 			APIServer:              alternativeAPIServer,
 			doNotStartServer:       true,
 			noAlternativeAPIServer: true,
