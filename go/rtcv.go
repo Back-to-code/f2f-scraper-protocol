@@ -1,5 +1,15 @@
 package scraper
 
+type slugBody struct {
+	Slug string `json:"slug"`
+}
+
+type slugUpdateResponse struct {
+	Slug              string `json:"slug"`
+	OverwroteExisting bool   `json:"overwroteExisting"`
+	OldSlug           string `json:"oldSlug"`
+}
+
 // Profile contains all the information about a search profile
 type Profile struct {
 	Id              string   `json:"id"`
