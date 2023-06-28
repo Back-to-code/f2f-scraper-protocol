@@ -269,6 +269,26 @@ export class Server {
 		}
 	}
 
+	// sets the invalid flag of a site storage credential to **true**
+	public invalidateSiteStorageCredential(
+		credential: SiteStorageCredentials
+	): Promise<SiteStorageCredentials> {
+		return this.fetchWithRetry(
+			"/api/v1/siteStorageCredentials/" + credential.id + "/invalidate",
+			{ method: "PATCH" }
+		)
+	}
+
+	// sets the invalid flag of a site storage credential to **false**
+	public validateSiteStorageCredential(
+		credential: SiteStorageCredentials
+	): Promise<SiteStorageCredentials> {
+		return this.fetchWithRetry(
+			"/api/v1/siteStorageCredentials/" + credential.id + "/validate",
+			{ method: "PATCH" }
+		)
+	}
+
 	private validateCv(cv: Cv) {
 		if (!cv.referenceNumber) throw "referenceNumber is required"
 

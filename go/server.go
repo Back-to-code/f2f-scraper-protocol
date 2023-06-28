@@ -221,6 +221,36 @@ func (s *Scraper) GetSiteStorageCredentials() (SiteStorageCredentials, error) {
 	return resp, err
 }
 
+// InvalidateSiteStorageCredential invalidates a site storage credential
+// Sets Invalid = true
+func (s *Scraper) InvalidateSiteStorageCredential(credential *SiteStorageCredential) error {
+	var updatedCredential SiteStorageCredential
+	err := s.FetchWithRetries("/api/v1/siteStorageCredentials/"+credential.ID+"/invalidate", FetchOps{
+		Method: "PATCH",
+		Output: &updatedCredential,
+	})
+	if err != nil {
+		return err
+	}
+	*credential = updatedCredential
+	return nil
+}
+
+// ValidateSiteStorageCredential re-validates a site storage credential
+// Sets Invalid = false
+func (s *Scraper) ValidateSiteStorageCredential(credential *SiteStorageCredential) error {
+	var updatedCredential SiteStorageCredential
+	err := s.FetchWithRetries("/api/v1/siteStorageCredentials/"+credential.ID+"/validate", FetchOps{
+		Method: "PATCH",
+		Output: &updatedCredential,
+	})
+	if err != nil {
+		return err
+	}
+	*credential = updatedCredential
+	return nil
+}
+
 // SendCvReq is a request to send a cv to the server
 type SendCvReq struct {
 	CV CV `json:"cv"`
