@@ -252,7 +252,7 @@ export class Server {
 		const invalid = []
 		for (const credential of credentials) {
 			if (credential.hiddenCredentials) {
-				throw "This api key can't fetch cookies from site storage credentials"
+				throw "This api is not allowed to see the contents of site storage credentials"
 			}
 			if (credential.invalid) {
 				invalid.push(credential)

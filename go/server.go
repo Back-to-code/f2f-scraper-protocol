@@ -205,6 +205,22 @@ func (s *Scraper) GetUsers(mustAtLeastOneUser bool) ([]LoginUser, error) {
 	return resp.Users, nil
 }
 
+// GetSiteStorageCredentials gets the site storage credentials
+func (s *Scraper) GetSiteStorageCredentials() (SiteStorageCredentials, error) {
+	resp := SiteStorageCredentials{}
+	err := s.FetchWithRetries("/api/v1/siteStorageCredentials/scraper/"+s.apiCredentials.Username, FetchOps{
+		Output: &resp,
+	})
+
+	for _, credential := range resp {
+		if credential.HiddenCredentials {
+			return resp, errors.New("This api is not allowed to see the contents of site storage credentials")
+		}
+	}
+
+	return resp, err
+}
+
 // SendCvReq is a request to send a cv to the server
 type SendCvReq struct {
 	CV CV `json:"cv"`
