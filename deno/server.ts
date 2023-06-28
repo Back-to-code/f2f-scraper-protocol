@@ -31,6 +31,15 @@ export interface LoginUser {
 	password: string
 }
 
+export interface SiteStorageCredentials {
+	id: string
+	scraperId: string
+
+	invalid: boolean
+	hiddenCredentials: boolean
+	cookies: Record<string, Array<string>> | null
+}
+
 interface ServerAuth {
 	username: string
 	password: string
@@ -218,6 +227,46 @@ export class Server {
 		}
 
 		return users
+	}
+
+	// Gets all the site credentials for the api key
+	//
+	public async getSiteStorageCredentials(): Promise<{
+		all: Array<SiteStorageCredentials>
+		valid: Array<SiteStorageCredentials>
+		invalid: Array<SiteStorageCredentials>
+		atLeastOneValidCredential: boolean
+	}> {
+		const credentials: Array<SiteStorageCredentials> =
+			await this.fetchWithRetry(
+				"/api/v1/siteStorageCredentials/scraper/" + this.apiKeyId
+			)
+
+		if (!Array.isArray(credentials)) {
+			throw `Unexpected RT-CV response for site credentials, expected array but got ${JSON.stringify(
+				credentials
+			)}`
+		}
+
+		const valid = []
+		const invalid = []
+		for (const credential of credentials) {
+			if (credential.hiddenCredentials) {
+				throw "This api key can't fetch cookies from site storage credentials"
+			}
+			if (credential.invalid) {
+				invalid.push(credential)
+			} else {
+				valid.push(credential)
+			}
+		}
+
+		return {
+			all: credentials,
+			valid,
+			invalid,
+			atLeastOneValidCredential: valid.length > 0,
+		}
 	}
 
 	private validateCv(cv: Cv) {
