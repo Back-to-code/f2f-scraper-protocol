@@ -5,7 +5,6 @@ info:
   description: This defines how a scraper should behave
 security:
   - basicAuth: []
-
 paths:
   /health:
     get:
@@ -51,7 +50,6 @@ paths:
           $ref: "#/components/responses/NotImplemented"
         500:
           $ref: "#/components/responses/InternalServerError"
-
   /check-credentials:
     post:
       description: Check if given credentials are correct
@@ -91,14 +89,50 @@ paths:
           $ref: "#/components/responses/NotImplemented"
         500:
           $ref: "#/components/responses/InternalServerError"
-
+  /check-site-storage-credentials:
+    post:
+      description: Check if given credentials are correct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              description: The credentials to check.
+              type: object
+              properties:
+                cookies:
+                  description: if the site uses cookies for authentication. The key is the cookie name and the value is the cookie value
+                  type: object
+                  additionalProperties:
+                    type: array
+                    items:
+                      type: string
+      responses:
+        200:
+          description: The given credentials where checked correctly
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - valid
+                properties:
+                  valid:
+                    type: boolean
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/UnauthorizedError"
+        404:
+          $ref: "#/components/responses/NotImplemented"
+        500:
+          $ref: "#/components/responses/InternalServerError"
 components:
   securitySchemes:
     basicAuth:
-      description: Authenticate using the the same credentials as the credentials in RTCV_SERVER
+      description: Authenticate using the same credentials as the credentials in RTCV_SERVER
       type: http
       scheme: basic
-
   schemas:
     Error:
       type: object
@@ -107,7 +141,6 @@ components:
       properties:
         error:
           type: string
-
   responses:
     UnauthorizedError:
       description: Basic authentication missing or invalid

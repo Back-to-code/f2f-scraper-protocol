@@ -1,4 +1,5 @@
 import { Cv } from "./cv.ts"
+import { SiteStorageCredentialsValue } from "./server.ts"
 
 export type PotentialPromise<T> = T | Promise<T>
 
@@ -20,6 +21,9 @@ export interface Handlers {
 	checkCredentials?: (
 		username: string,
 		password: string
+	) => PotentialPromise<boolean>
+	checkSiteStorageCredentials?: (
+		credentials: SiteStorageCredentialsValue
 	) => PotentialPromise<boolean>
 }
 
@@ -67,8 +71,7 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 				const cv = await handlers.cv(body.referenceNr)
 				return Response.json({ cv })
 			} catch (e) {
-				console.log("Failed to fetch cv, error:")
-				console.log(e)
+				console.log("Failed to fetch cv, error: ", e)
 				return Response.json(
 					{ error: "Failed to fetch cv by reference number" },
 					{ status: 500 }
@@ -80,7 +83,7 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 				return notImplementedResponse()
 			}
 
-			const body = request.json()
+			const body = await request.json()
 
 			const bodyError = () =>
 				new Response("Expected a body with a username and password", {
@@ -102,6 +105,74 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 					body.username,
 					body.password
 				)
+				return Response.json({ valid })
+			} catch (e) {
+				console.log("Failed to check credentials, error: ", e)
+				return Response.json(
+					{ error: "Failed to check credentials" },
+					{ status: 500 }
+				)
+			}
+		},
+		"POST /check-site-storage-credentials": async (request) => {
+			if (!handlers.checkSiteStorageCredentials) {
+				return notImplementedResponse()
+			}
+
+			let body
+			try {
+				body = await request.json()
+			} catch (e) {
+				return Response.json(
+					{ error: `Failed to parse body, error: ${e}` },
+					{ status: 400 }
+				)
+			}
+
+			const bodyError = (error: string) =>
+				new Response(`Failed to parse body, error: ${error}`, {
+					status: 400,
+				})
+
+			if (typeof body !== "object" || body === null) {
+				return bodyError("body is not an object")
+			}
+
+			if ("cookies" in body && body.cookies) {
+				if (typeof body.cookies !== "object") {
+					return bodyError("body.cookies is not an object")
+				}
+
+				if (Object.keys(body.cookies).length === 0) {
+					return bodyError("body.cookies is empty")
+				}
+
+				for (const [cookieName, cookieValue] of Object.entries(
+					body.cookies
+				)) {
+					if (!Array.isArray(cookieValue)) {
+						return bodyError(
+							"body.cookies[cookieName] is not an array"
+						)
+					}
+					for (const value of cookieValue) {
+						if (typeof value !== "string") {
+							return bodyError(
+								"body.cookies[cookieName] contains a non-string value"
+							)
+						}
+					}
+
+					if (typeof cookieName !== "string") {
+						return bodyError(
+							"body.cookies contains a non-string key"
+						)
+					}
+				}
+			}
+
+			try {
+				const valid = await handlers.checkSiteStorageCredentials(body)
 				return Response.json({ valid })
 			} catch (e) {
 				console.log("Failed to check credentials, error:")

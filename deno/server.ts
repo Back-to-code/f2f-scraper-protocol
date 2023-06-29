@@ -31,13 +31,16 @@ export interface LoginUser {
 	password: string
 }
 
-export interface SiteStorageCredentials {
+export interface SiteStorageCredentialsValue {
+	cookies: Record<string, Array<string>> | null
+}
+
+export interface SiteStorageCredentials extends SiteStorageCredentialsValue {
 	id: string
 	scraperId: string
 
 	invalid: boolean
 	hiddenCredentials: boolean
-	cookies: Record<string, Array<string>> | null
 }
 
 interface ServerAuth {

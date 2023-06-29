@@ -5,6 +5,17 @@ const handlers: Handlers = {
 	checkCredentials(username, password) {
 		return username == "root" && password == "toor"
 	},
+	checkSiteStorageCredentials(credentials) {
+		if (!credentials.cookies) return false
+		for (const [name, values] of Object.entries(credentials.cookies)) {
+			for (const value of values) {
+				if (name == "cookie-name" && value == "cookie-value") {
+					return true
+				}
+			}
+		}
+		return false
+	},
 }
 
 // Create a new server instance
