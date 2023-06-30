@@ -21,7 +21,7 @@ func (c Credentials) rtcvAuthorizationHeader() string {
 
 var errUnauthorized = "401 Unauthorized, either the authorization header is missing or incorrect. Expected `Basic <base64(apiKeyId:apiKey)>` where the apiKeyId is are the same as the scraper uses to authenticat with RT-CV"
 
-func apiServer(listen string, handelers Handlers, credentials []Credentials, fiberOpsCallback func(*fiber.App)) {
+func apiServer(listen string, handlers Handlers, credentials []Credentials, fiberOpsCallback func(*fiber.App)) {
 	app := fiber.New()
 	app.Use(basicauth.New(basicauth.Config{
 		Authorizer: func(user, pass string) bool {
@@ -50,7 +50,7 @@ func apiServer(listen string, handelers Handlers, credentials []Credentials, fib
 			return c.Status(400).JSON(errorResponseT{err.Error()})
 		}
 
-		cv, err := handelers.CV(body.ReferenceNr)
+		cv, err := handlers.CV(body.ReferenceNr)
 		if err != nil {
 			status := 500
 			if err == ErrNotImplemented {
@@ -72,7 +72,30 @@ func apiServer(listen string, handelers Handlers, credentials []Credentials, fib
 			return c.Status(400).JSON(errorResponseT{err.Error()})
 		}
 
-		valid, err := handelers.CheckCredentials(user)
+		valid, err := handlers.CheckCredentials(user)
+		if err != nil {
+			status := 500
+			if err == ErrNotImplemented {
+				status = 404
+			}
+			return c.Status(status).JSON(errorResponseT{err.Error()})
+		}
+
+		return c.JSON(struct {
+			Valid bool `json:"valid"`
+		}{
+			Valid: valid,
+		})
+	})
+
+	app.Post("check-site-storage-credentials", func(c *fiber.Ctx) error {
+		checkSiteStorageCredential := SiteStorageCredentialValue{}
+		err := c.BodyParser(&checkSiteStorageCredential)
+		if err != nil {
+			return c.Status(400).JSON(errorResponseT{err.Error()})
+		}
+
+		valid, err := handlers.CheckSiteStorageCredentials(checkSiteStorageCredential)
 		if err != nil {
 			status := 500
 			if err == ErrNotImplemented {

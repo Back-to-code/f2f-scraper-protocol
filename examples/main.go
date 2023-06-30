@@ -22,8 +22,21 @@ func (h handelersT) CheckCredentials(user scraper.LoginUser) (bool, error) {
 	return false, nil
 }
 
+func (h handelersT) CheckSiteStorageCredentials(credentials scraper.SiteStorageCredentialValue) (bool, error) {
+	cookieValue, ok := credentials.Cookies["cookie-name"]
+	if !ok {
+		return false, nil
+	}
+	for _, cookie := range cookieValue {
+		if cookie == "cookie-value" {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func main() {
-	os.Setenv("RTCV_SERVER", "http://622f293abced696dff424f6f:3tL1yzpMaYy3pyb2yFdrxz5FJFmTQVdt@localhost:4000")
+	os.Setenv("RTCV_SERVER", "http://63d79c50ce3ed41a830a78d3:FHihI70MCTCLQzbYDo1YQdkzUU2pD0O4@localhost:4000")
 
 	server := scraper.Start("scraper-name-as-slug", &handelersT{}, scraper.StartOptions{
 		FiberOptionsFn: func(app *fiber.App) {

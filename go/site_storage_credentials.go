@@ -11,6 +11,10 @@ type SiteStorageCredential struct {
 	Cookies           *map[string][]string `json:"cookies"`
 }
 
+type SiteStorageCredentialValue struct {
+	Cookies map[string][]string `json:"cookies"`
+}
+
 // SiteStorageCredentials is a slice of SiteStorageCredential with helper methods
 type SiteStorageCredentials []SiteStorageCredential
 
