@@ -100,7 +100,7 @@ export class Server {
 			})
 		}
 
-		this.setSlug(slug)
+		if (!options.skipSlugCheck) this.setSlug(slug)
 
 		if (options.customHandlers) {
 			try {
@@ -321,6 +321,18 @@ export class Server {
 
 	public async sendCvsList(cvs: Array<Cv>, preValidation = true) {
 		if (preValidation) for (const cv of cvs) this.validateCv(cv)
+
+		// Stip information from CVs that is not needed for list CVs
+		for (let idx = 0; idx < cvs.length; idx++) {
+			const cv = cvs[idx]
+			cvs[idx] = {
+				referenceNumber: cv.referenceNumber,
+				link: cv.link,
+				createdAt: cv.createdAt,
+				lastChanged: cv.lastChanged,
+				personalDetails: cv.personalDetails,
+			}
+		}
 
 		this.alternativeServer?.sendCvsList(cvs, false).catch((e) => {
 			console.log("failed to send cvs list to alternative server,", e)

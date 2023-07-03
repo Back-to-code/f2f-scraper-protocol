@@ -286,6 +286,16 @@ func (s *Scraper) SendCVsList(cvs []CV) error {
 		return err
 	}
 
+	for idx, cv := range cvs {
+		cvs[idx] = CV{
+			ReferenceNumber: cv.ReferenceNumber,
+			Link:            cv.Link,
+			CreatedAt:       cv.CreatedAt,
+			LastChanged:     cv.LastChanged,
+			PersonalDetails: cv.PersonalDetails,
+		}
+	}
+
 	if s.alternativeServer != nil {
 		err = s.alternativeServer.SendCVsList(cvs)
 		if err != nil {
