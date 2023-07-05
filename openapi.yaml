@@ -2,7 +2,20 @@ openapi: 3.0.0
 info:
   version: 1.0.0
   title: A Scraper
-  description: This defines how a scraper should behave
+  description: |
+    This defines how a scraper should behave
+
+    ## Auth
+
+    The basic auth authentication username and password can be obtained via RT-CV.
+    Within RT-CV select the scraper you want the credentials of and copy the `Key ID` and the `Key` itself.
+    Now you can use the `Key ID` as username and `key` as password
+
+    Most server side HTTP clients allow basic auth credentials within the url so making requests to a scraper is as easy as:
+    ```sh
+    # Make sure to replace the username and password with RT-CV scraper's key key id and key
+    curl https://aaaaaaaaaaaaaaaaaaaaaaaa:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@werk-scraper.fly.dev/health
+    ```
 servers:
   - url: https://werk-scraper.fly.dev
   - url: https://uitzendbureau-scraper.fly.dev
