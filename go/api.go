@@ -7,6 +7,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/basicauth"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 )
 
 // Credentials contains a username and password combo
@@ -23,6 +24,7 @@ var errUnauthorized = "401 Unauthorized, either the authorization header is miss
 
 func apiServer(listen string, handlers Handlers, credentials []Credentials, fiberOpsCallback func(*fiber.App)) {
 	app := fiber.New()
+	app.Use(cors.New(cors.ConfigDefault))
 	app.Use(basicauth.New(basicauth.Config{
 		Authorizer: func(user, pass string) bool {
 			for _, c := range credentials {

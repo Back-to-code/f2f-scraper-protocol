@@ -399,8 +399,37 @@ export class Server {
 
 	private async handleConn(conn: Deno.Conn) {
 		const httpConn = Deno.serveHttp(conn)
-		for await (const requestEvent of httpConn) {
-			this.handleRequest(requestEvent)
+		for await (const { request, respondWith } of httpConn) {
+			const url = new URL(request.url)
+
+			if (request.method === "OPTIONS") {
+				// Handle CORS preflight requests
+				const response = new Response(null, {
+					status: 204,
+					headers: {
+						Vary: "Origin, Access-Control-Request-Method, Access-Control-Request-Headers",
+						"Access-Control-Allow-Origin": "*",
+						"access-control-allow-methods":
+							"GET,POST,HEAD,PUT,DELETE,PATCH",
+						"Access-Control-Allow-Headers": "*",
+					},
+				})
+
+				console.log(response.status, request.method, url.pathname)
+				respondWith(response)
+				continue
+			}
+
+			const response = await this.handleRequest(request, url.pathname)
+
+			// Set CORS headers
+			response.headers.set("Access-Control-Allow-Origin", "*")
+
+			response.headers.set("Access-Control-Allow-Headers", "*")
+			response.headers.set("Vary", "Origin")
+
+			console.log(response.status, request.method, url.pathname)
+			respondWith(response)
 		}
 	}
 
@@ -447,34 +476,34 @@ export class Server {
 		return this.unauthorizedResponse()
 	}
 
-	private handleRequest({ request, respondWith }: Deno.RequestEvent) {
-		const url = new URL(request.url)
-		console.log(url.pathname)
-
+	private async handleRequest(
+		request: Request,
+		pathname: string
+	): Promise<Response> {
 		const authError = this.requestValidAuth(
 			request.headers.get("Authorization")
 		)
-		if (authError) return respondWith(authError)
+		if (authError) return authError
 
 		let apiHandler = resolveApiHandler(
 			this.handlers,
 			request.method,
-			url.pathname
+			pathname
 		)
 
 		if (!apiHandler) {
 			apiHandler = resolveExternalHandler(
 				this.externalHandlers,
 				request.method,
-				url.pathname
+				pathname
 			)
 		}
 
-		if (!apiHandler) return respondWith(this.notFoundResponse())
+		if (!apiHandler) return this.notFoundResponse()
 
 		const response = apiHandler(request)
-		if (!response) return respondWith(this.notFoundResponse())
-		respondWith(response)
+		if (!response) return this.notFoundResponse()
+		return await response
 	}
 
 	private async setSlug(slug: string) {
