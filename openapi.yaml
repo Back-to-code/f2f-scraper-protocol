@@ -3,6 +3,15 @@ info:
   version: 1.0.0
   title: A Scraper
   description: This defines how a scraper should behave
+servers:
+  - url: https://werk-scraper.fly.dev
+  - url: https://uitzendbureau-scraper.fly.dev
+  - url: https://nvb-scraper.fly.dev
+  - url: https://ikbenbeschikbaar-scraper.fly.dev
+  - url: https://debanensite-scraper.fly.dev
+  - url: https://jobbird-scraper.fly.dev
+  - url: https://techniekwerkt-scraper.fly.dev
+  - url: https://f2f-linkedin-scraper.fly.dev
 security:
   - basicAuth: []
 paths:
