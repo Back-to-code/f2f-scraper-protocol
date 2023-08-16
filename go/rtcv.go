@@ -16,6 +16,7 @@ type Profile struct {
 	Name            string   `json:"name"`
 	Active          bool     `json:"active"`
 	AllowedScrapers []string `json:"allowedScrapers" bson:"allowedScrapers" description:"Define a list of scraper keys that can use this profile, if value is undefined or empty all keys are allowed"`
+	AllowedTypes    []string `json:"allowedTypes" bson:"allowedTypes" description:"Types of CV's profile accepts, can be either 'lead' or 'potential_candidate'"`
 
 	MustDesiredProfession bool                `json:"mustDesiredProfession" bson:"mustDesiredProfession"`
 	DesiredProfessions    []ProfileProfession `json:"desiredProfessions" bson:"desiredProfessions"`
@@ -36,9 +37,6 @@ type Profile struct {
 	Educations            []ProfileEducation `json:"educations" bson:"educations"`
 
 	Zipcodes []ProfileDutchZipcode `json:"zipCodes" bson:"zipCodes"`
-
-	// What should happen on a match
-	OnMatch ProfileOnMatch `json:"onMatch" bson:"onMatch" description:"What should happen when a match is made on this profile"`
 
 	ListsAllowed bool `json:"listsAllowed" bson:"listsAllowed"`
 
@@ -72,11 +70,6 @@ type ProfileEducation struct {
 type ProfileDutchZipcode struct {
 	From uint16 `json:"from"`
 	To   uint16 `json:"to"`
-}
-
-// ProfileOnMatch defines what should happen when a profile is matched to a CV
-type ProfileOnMatch struct {
-	SendMail []ProfileSendEmailData `json:"sendMail" bson:"sendMail"`
 }
 
 // ProfileSendEmailData only contains an email address atm

@@ -41,6 +41,7 @@ type CV struct {
 	Hobbies         []Hobby          `json:"hobbies,omitempty"`
 	PersonalDetails PersonalDetails  `json:"personalDetails,omitempty"`
 	DriversLicenses []string         `json:"driversLicenses,omitempty"`
+	Type            string           `json:"cvType,omitempty"`
 }
 
 // Preferences contains preferred  job preferences
