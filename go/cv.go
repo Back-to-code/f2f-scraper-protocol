@@ -41,6 +41,7 @@ type CV struct {
 	Hobbies         []Hobby          `json:"hobbies,omitempty"`
 	PersonalDetails PersonalDetails  `json:"personalDetails,omitempty"`
 	DriversLicenses []string         `json:"driversLicenses,omitempty"`
+	Type            CVType           `json:"cvType,omitempty"`
 }
 
 // Preferences contains preferred  job preferences
@@ -134,4 +135,29 @@ type PersonalDetails struct {
 	Country           string           `json:"country,omitempty"`
 	PhoneNumber       string           `json:"phoneNumber,omitempty"`
 	Email             string           `json:"email,omitempty"`
+}
+
+type CVType string
+
+const (
+	Lead              CVType = "lead"
+	PotentialCandiate        = "potential_candiate"
+)
+
+func (ct CVType) Valid() bool {
+	for _, v := range CVTypes {
+		if v == ct {
+			return true
+		}
+	}
+	return false
+}
+
+func (ct CVType) Default() CVType {
+	return Lead
+}
+
+var CVTypes = []CVType{
+	Lead,
+	PotentialCandiate,
 }

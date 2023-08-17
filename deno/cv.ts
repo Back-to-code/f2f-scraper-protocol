@@ -13,7 +13,10 @@ export interface Cv {
 	hobbies?: Array<Hobby>
 	personalDetails?: PersonalDetails
 	driversLicenses?: Array<string>
+	type?: CVTypes
 }
+
+export type CVTypes = "lead" | "potential_candidate"
 
 export enum EducationKind {
 	Unknown = 0,
