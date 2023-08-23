@@ -214,9 +214,7 @@ export class Server {
 	public async getUsers(
 		mustBeAtLeastOneUser: boolean
 	): Promise<Array<LoginUser>> {
-		const { users } = await this.fetchWithRetry(
-			"/api/v1/scraperUsers/" + this.apiKeyId
-		)
+		const { users } = await this.fetchWithRetry("/api/v1/scraperUsers")
 
 		if (users.length == 0 && mustBeAtLeastOneUser) {
 			throw "No login users found"
@@ -230,6 +228,48 @@ export class Server {
 		}
 
 		return users
+	}
+
+	public async reportLoginSuccess(usernameOrUser: string | LoginUser) {
+		return await this.reportLoginAttempt(usernameOrUser, true)
+	}
+
+	public async reportLoginFailure(usernameOrUser: string | LoginUser) {
+		return await this.reportLoginAttempt(usernameOrUser, false)
+	}
+
+	public async reportLoginAttempt(
+		usernameOrUser: string | LoginUser,
+		success: boolean
+	) {
+		const username =
+			typeof usernameOrUser === "string"
+				? usernameOrUser
+				: usernameOrUser.username
+
+		try {
+			await this.fetchWithRetry(
+				"/api/v1/scraperUsers/reportLoginAttempt",
+				{
+					method: "POST",
+					body: {
+						username,
+						success,
+					},
+				}
+			)
+		} catch (e) {
+			console.warn(
+				`failed to report login ${
+					success ? "success" : "failure"
+				} for user "${username}", error:`,
+				e
+			)
+		}
+		await this.alternativeServer?.reportLoginAttempt(
+			usernameOrUser,
+			success
+		)
 	}
 
 	// Gets all the site credentials for the api key

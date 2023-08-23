@@ -184,7 +184,7 @@ func (s *Scraper) GetUsers(mustAtLeastOneUser bool) ([]LoginUser, error) {
 		Users []LoginUser `json:"users"`
 	}{}
 
-	err := s.Fetch("/api/v1/scraperUsers/"+s.apiCredentials.Username, FetchOps{Output: &resp})
+	err := s.Fetch("/api/v1/scraperUsers", FetchOps{Output: &resp})
 	if err != nil {
 		return nil, err
 	}
@@ -203,6 +203,40 @@ func (s *Scraper) GetUsers(mustAtLeastOneUser bool) ([]LoginUser, error) {
 	}
 
 	return resp.Users, nil
+}
+
+// ReportLoginSuccess reports a login success to the server
+func (s *Scraper) ReportLoginSuccess(user LoginUser) {
+	s.ReportLoginAttempt(user, true)
+}
+
+// ReportLoginFailure reports a login failure to the server
+func (s *Scraper) ReportLoginFailure(user LoginUser) {
+	s.ReportLoginAttempt(user, false)
+}
+
+// ReportLoginAttemptReq is a request to report a login attempt
+type ReportLoginAttemptReq struct {
+	Username string `json:"username"`
+	Success  bool   `json:"success"`
+}
+
+// ReportLoginAttempt reports a login attempt to the server
+func (s *Scraper) ReportLoginAttempt(user LoginUser, success bool) {
+	err := s.Fetch("/api/v1/scraperUsers/reportLoginAttempt", FetchOps{Method: "POST", Body: ReportLoginAttemptReq{
+		Username: user.Username,
+		Success:  success,
+	}})
+	if err != nil {
+		successOrFailure := "success"
+		if !success {
+			successOrFailure = "failure"
+		}
+		fmt.Printf(`failed to report login %s for user "%s", error: %s\n`, successOrFailure, user.Username, err.Error())
+	}
+	if s.alternativeServer != nil {
+		s.alternativeServer.ReportLoginAttempt(user, success)
+	}
 }
 
 // GetSiteStorageCredentials gets the site storage credentials
