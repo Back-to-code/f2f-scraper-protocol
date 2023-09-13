@@ -28,7 +28,15 @@ export interface Handlers {
 }
 
 const notImplementedResponse = () =>
-	new Response("Not Implemented", { status: 404 })
+	Response.json(
+		{ error: "Not Implemented" },
+		{
+			status: 404,
+			headers: {
+				"X-Not-Implemented": "true",
+			},
+		}
+	)
 
 export function resolveApiHandler(
 	handlers: Handlers,

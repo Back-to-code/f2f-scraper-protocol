@@ -172,10 +172,22 @@ components:
             $ref: "#/components/schemas/Error"
     NotImplemented:
       description: Not implemented
+      headers:
+        X-Not-Implemented:
+          schema:
+            type: boolean
+            default: true
+          description: "A header that indicates that this method is not implemented"
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/Error"
+            type: object
+            required:
+              - error
+            properties:
+              error:
+                type: string
+                default: "Not Implemented"
     InternalServerError:
       description: Internal server error, something within the scraper went wrong that is un related to the provided login credentials thus the given login credentials might be valid or invalid this is just a server failure.
       content:

@@ -23,7 +23,7 @@ func (c Credentials) rtcvAuthorizationHeader() string {
 var errUnauthorized = "401 Unauthorized, either the authorization header is missing or incorrect. Expected `Basic <base64(apiKeyId:apiKey)>` where the apiKeyId is are the same as the scraper uses to authenticat with RT-CV"
 
 func apiServer(listen string, handlers Handlers, credentials []Credentials, fiberOpsCallback func(*fiber.App)) {
-	app := fiber.New()
+	app := fiber.New(fiber.Config{})
 	app.Use(cors.New(cors.ConfigDefault))
 	app.Use(basicauth.New(basicauth.Config{
 		Authorizer: func(user, pass string) bool {
@@ -56,7 +56,7 @@ func apiServer(listen string, handlers Handlers, credentials []Credentials, fibe
 		if err != nil {
 			status := 500
 			if err == ErrNotImplemented {
-				status = 404
+				return errNotImplementedResponse(c)
 			}
 			return c.Status(status).JSON(errorResponseT{err.Error()})
 		}
@@ -78,7 +78,7 @@ func apiServer(listen string, handlers Handlers, credentials []Credentials, fibe
 		if err != nil {
 			status := 500
 			if err == ErrNotImplemented {
-				status = 404
+				return errNotImplementedResponse(c)
 			}
 			return c.Status(status).JSON(errorResponseT{err.Error()})
 		}
@@ -101,7 +101,7 @@ func apiServer(listen string, handlers Handlers, credentials []Credentials, fibe
 		if err != nil {
 			status := 500
 			if err == ErrNotImplemented {
-				status = 404
+				return errNotImplementedResponse(c)
 			}
 			return c.Status(status).JSON(errorResponseT{err.Error()})
 		}

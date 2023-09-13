@@ -1,6 +1,10 @@
 package scraper
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/gofiber/fiber/v2"
+)
 
 // Handlers is the interface that must be implemented by a scraper
 type Handlers interface {
@@ -19,6 +23,11 @@ var _baseHandlersCheck Handlers = BaseHandlers{}
 // ErrNotImplemented is returned when a handler is not implemented
 // All base handlers return this error
 var ErrNotImplemented = errors.New("not implemented")
+
+func errNotImplementedResponse(c *fiber.Ctx) error {
+	c.Response().Header.Add("X-Not-Implemented", "true")
+	return c.Status(404).JSON(errorResponseT{ErrNotImplemented.Error()})
+}
 
 // CheckCredentials checks the credentials of a user
 func (h BaseHandlers) CheckCredentials(user LoginUser) (bool, error) {
