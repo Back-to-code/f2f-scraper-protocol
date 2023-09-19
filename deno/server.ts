@@ -227,7 +227,7 @@ export class Server {
 			throw "This key uses a unsupported and deprecated scraper user encryption method, please convert your users to the new encryption method via the RT-CV dashboard"
 		}
 
-		return users
+		return this.shuffle(users)
 	}
 
 	public async reportLoginSuccess(usernameOrUser: string | LoginUser) {
@@ -330,6 +330,15 @@ export class Server {
 			"/api/v1/siteStorageCredentials/" + credential.id + "/validate",
 			{ method: "PATCH" }
 		)
+	}
+
+	private shuffle<T>(array: T[]) {
+		for (let i = array.length - 1; i > 0; i--) {
+			let j = Math.floor(Math.random() * (i + 1))
+			;[array[i], array[j]] = [array[j], array[i]]
+		}
+
+		return array
 	}
 
 	private validateCv(cv: Cv) {
