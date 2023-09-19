@@ -3,6 +3,7 @@ package scraper
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"net/url"
 	"os"
 
@@ -201,6 +202,8 @@ func (s *Scraper) GetUsers(mustAtLeastOneUser bool) ([]LoginUser, error) {
 	if len(resp.Users) > 0 && notSetPasswords == len(resp.Users) {
 		return nil, errors.New("this key uses a unsupported and deprecated scraper user encryption method, please convert your users to the new encryption method via the RT-CV dashboard")
 	}
+
+	rand.Shuffle(len(resp.Users), func(i, j int) { resp.Users[i], resp.Users[j] = resp.Users[j], resp.Users[i] })
 
 	return resp.Users, nil
 }
