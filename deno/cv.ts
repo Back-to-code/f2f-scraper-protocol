@@ -36,9 +36,9 @@ export interface Education {
 }
 
 export interface WorkExperience {
-	description: string
+	description?: string
 	profession: string
-	employer: string
+	employer?: string
 	startDate?: string // assuming JSONRFC3339Nano is a custom date format
 	endDate?: string // assuming JSONRFC3339Nano is a custom date format
 	stillEmployed?: boolean
