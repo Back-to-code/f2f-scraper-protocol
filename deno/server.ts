@@ -177,12 +177,11 @@ export class Server {
 				if (
 					e instanceof FetchError &&
 					e.status >= 400 &&
-					e.parsedResponse
+					e.parsedResponse &&
+					e.parsedResponse?.kind === "INPUT_VALIDATION"
 				) {
-					if (e.parsedResponse?.kind === "INPUT_VALIDATION") {
-						// This request wil keep failing as there is an error on our end, so we should not retry
-						throw e
-					}
+					// This request wil keep failing as there is an error on our end, so we should not retry
+					throw e
 				}
 
 				if (retries < 3) {
