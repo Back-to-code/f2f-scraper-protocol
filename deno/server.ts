@@ -48,6 +48,25 @@ interface ServerAuth {
 	password: string
 }
 
+export class FetchError {
+	public path: string
+	public status: number
+	public response: string
+	// deno-lint-ignore no-explicit-any
+	public parsedResponse: any | null = null
+
+	constructor(response: string, path: string, status: number) {
+		this.path = path
+		this.status = status
+		this.response = response
+		try {
+			this.parsedResponse = JSON.parse(this.response)
+		} catch (_e) {
+			// Ignore
+		}
+	}
+}
+
 export class Server {
 	private handlers: Handlers
 	private port: number
@@ -155,6 +174,17 @@ export class Server {
 			try {
 				return await this.fetch(path, options)
 			} catch (e) {
+				if (
+					e instanceof FetchError &&
+					e.status >= 400 &&
+					e.parsedResponse
+				) {
+					if (e.parsedResponse?.kind === "INPUT_VALIDATION") {
+						// This request wil keep failing as there is an error on our end, so we should not retry
+						throw e
+					}
+				}
+
 				if (retries < 3) {
 					retries++
 					const waitSeconds = retries * 3
@@ -198,8 +228,7 @@ export class Server {
 
 		const r = await fetch(this.apiServer + path, fetchOptions)
 		if (r.status >= 400) {
-			const response = await r.text()
-			throw `failed to make request to ${path}, error response: ${response}`
+			throw new FetchError(await r.text(), path, r.status)
 		}
 
 		return r.json()
