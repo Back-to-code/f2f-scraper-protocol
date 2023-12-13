@@ -7,7 +7,7 @@ export type CustomHandlerCallback = (
 	request: Request
 ) => PotentialPromise<Response>
 
-type ApiHandler = (request: Request) => Response | Promise<Response>
+type ApiHandler = (request: Request) => PotentialPromise<Response>
 type ApiHandlers = Record<string, ApiHandler>
 
 export interface CustomHandler {
@@ -201,9 +201,5 @@ export function resolveExternalHandler(
 	method: string,
 	path: string
 ): ApiHandler | undefined {
-	if (handlers.has(`${method} ${path}`)) {
-		return handlers.get(`${method} ${path}`)!
-	}
-
-	return undefined
+	return handlers.get(`${method} ${path}`)
 }

@@ -1,25 +1,34 @@
 definitions:
-  buildGoStep: &buildGo
+  goStep: &go
     name: Check Go lib
     image: golang:1.20
     script:
       - cd examples
       - go build
-  buildDenoStep: &buildDeno
+  denoStep: &deno
     name: Check Deno lib
     image: denoland/deno:1.34.2
     script:
+      - deno test deno
       - cd examples
       - deno check main.ts
+  bunStep: &bun
+    name: Check Bun lib
+    image: oven/bun:1
+    script:
+      - bun install --frozen-lockfile
+      - bun test bun
 
 pipelines:
   pull-requests:
     "**":
       - parallel:
-        - step: *buildGo
-        - step: *buildDeno
+          - step: *go
+          - step: *deno
+          - step: *bun
   branches:
     main:
       - parallel:
-        - step: *buildGo
-        - step: *buildDeno
+          - step: *go
+          - step: *deno
+          - step: *bun

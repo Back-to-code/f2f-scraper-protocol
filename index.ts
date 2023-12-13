@@ -1,4 +1,4 @@
-// This file belongs to the Deno codebase!
+// This file belongs to the Bun codebase!
 
 export type {
 	Handlers,
@@ -8,4 +8,4 @@ export type * from "./shared-typescript/cv.ts"
 export * from "./shared-typescript/cv.ts"
 export { FetchError } from "./shared-typescript/server.ts"
 export type * from "./shared-typescript/server.ts"
-export { Server } from "./deno/server.ts"
+export { Server } from "./bun/server.ts"
