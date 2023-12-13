@@ -12,11 +12,23 @@ class DenoLangSpecifics implements LangSpecifics {
 	getEnv(k: string): string | undefined {
 		return Deno.env.get(k)
 	}
-	httpServer(
+	async httpServer(
 		port: number,
 		handler: (request: Request) => PotentialPromise<Response>
 	): Promise<void> {
-		return Deno.serve({ port }, handler).finished
+		const s = Deno.listen({ port })
+		for await (const conn of s) {
+			this.handleConn(conn, handler)
+		}
+	}
+	async handleConn(
+		conn: Deno.Conn,
+		handler: (request: Request) => PotentialPromise<Response>
+	) {
+		const httpConn = Deno.serveHttp(conn)
+		for await (const requestEvent of httpConn) {
+			await requestEvent.respondWith(handler(requestEvent.request))
+		}
 	}
 }
 
