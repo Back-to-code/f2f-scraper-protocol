@@ -2,9 +2,15 @@
 
 This library helps you to build a scraper using Bun and is compliant with the [open api spec](./openapi.yaml).
 
-The example below expects the following shell variables: [.env.example](./.env.example)
+## Add lib
 
-_FIXME: fix import statements still use bun paths_
+```sh
+bun add git+https://bitbucket.org/teamscript/scraper-protocol.git#main
+```
+
+## Usable docs
+
+The example below expects the following shell variables: [.env.example](./.env.example)
 
 ```ts
 // Replace the hash with the latest commit hash
@@ -12,7 +18,7 @@ import {
 	Server,
 	Handlers,
 	Cv,
-} from "https://bitbucket.org/teamscript/scraper-protocol/raw/b611ec2ba48618db7b65a340213da25bf7050df8/mod.ts"
+} from "scraper-protocol"
 
 const handlers: Handlers = {
 	checkCredentials(username, password) {
@@ -36,7 +42,7 @@ const cv: Cv = {
 server.sendCv(cv)
 ```
 
-## Adding a custom handler
+### Adding a custom handler
 
 ```ts
 // Replace the hash with the latest commit hash
@@ -44,7 +50,7 @@ import {
 	Server,
 	Handlers,
 	Cv,
-} from "https://bitbucket.org/teamscript/scraper-protocol/raw/b611ec2ba48618db7b65a340213da25bf7050df8/mod.ts"
+} from "scraper-protocol"
 
 const handlers: Handlers = {
 	checkCredentials(username, password) {
