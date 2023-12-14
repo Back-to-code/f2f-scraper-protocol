@@ -395,7 +395,7 @@ export class AbstractServer {
 		return array
 	}
 
-	private validateCv(cv: Cv) {
+	protected validateCv(cv: Cv) {
 		if (!cv.referenceNumber) throw "referenceNumber is required"
 
 		const dob = cv?.personalDetails?.dob
@@ -406,6 +406,23 @@ export class AbstractServer {
 				throw "you must be at least 13 years old to work"
 			}
 		}
+	}
+
+	// Check if a CV has matches on RT-CV
+	// This can be used for example if scraping a partial cv is easy but a full cv is complicated
+	// In those cases you can first check if the cv has matches with partial data and if it does you scrape the full cv
+	//
+	// Currently this is used by the linkedin scraper to firstly check if the directly visable profile matches something.
+	// If so we also scrape all the information hidden behind models
+	async cvHasMatches(cv: Cv): Promise<boolean> {
+		this.validateCv(cv)
+
+		const resp = await this.fetchWithRetry("/api/v1/scraper/dryScanCV", {
+			body: { cv },
+			method: "POST",
+		})
+
+		return resp.hasMatches
 	}
 
 	// Send a scraped CV to RT-CV
