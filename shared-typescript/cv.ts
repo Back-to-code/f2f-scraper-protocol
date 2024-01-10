@@ -28,8 +28,8 @@ export enum EducationKind {
 export interface Education {
 	is: EducationKind
 	name: string
-	description: string
-	institute: string
+	description?: string
+	institute?: string
 	isCompleted?: boolean
 	hasDiploma?: boolean
 	startDate?: string // assuming JSONRFC3339Nano is a custom date format
