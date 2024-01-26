@@ -6,7 +6,8 @@ import {
 	resolveApiHandler,
 	resolveExternalHandler,
 } from "./handlers.ts"
-import type { Cv } from "./cv.ts"
+import { type Cv } from "./cv.ts"
+import { AbstractStats } from "./stats.ts"
 
 export interface ServerOptions {
 	// Required (If not set by env variables):
@@ -80,11 +81,12 @@ export interface LangSpecifics {
 		port: number,
 		handler: (request: Request) => PotentialPromise<Response>
 	): Promise<void>
+
+	// Create stats server
+	statsServer(prefix: string, port: number): AbstractStats
 }
 
 export class AbstractServer {
-	private common: LangSpecifics
-	private handlers: Handlers
 	private port: number
 	private apiServer: string
 	private apiKeyId: string
@@ -94,15 +96,11 @@ export class AbstractServer {
 	private externalHandlers: Map<string, CustomHandlerCallback> = new Map()
 
 	constructor(
-		common: LangSpecifics,
-		slug: string,
-		handlers: Handlers,
+		private common: LangSpecifics,
+		public readonly slug: string,
+		private handlers: Handlers,
 		options: ServerOptions
 	) {
-		this.common = common
-
-		this.handlers = handlers
-
 		const potentialsServerPort = this.mightGetEnv("SERVER_PORT")
 		if (potentialsServerPort) {
 			this.port = Number(potentialsServerPort)
@@ -144,7 +142,7 @@ export class AbstractServer {
 			})
 		}
 
-		if (!options.skipSlugCheck) this.setSlug(slug)
+		if (!options.skipSlugCheck) this.setSlug()
 
 		if (options.customHandlers) {
 			try {
@@ -186,13 +184,14 @@ export class AbstractServer {
 		}
 	}
 
-	private get authorizationHeader() {
-		return `Basic ${this.primaryServerAuth.username}:${this.primaryServerAuth.password}`
-	}
-
 	// ---
 	// Public methods
 	// ---
+
+	public statsServer(port = 9091): AbstractStats {
+		const prefix = this.slug.replace("-", "_") + "_"
+		return this.common.statsServer(prefix, port)
+	}
 
 	public async fetchWithRetry(path: string, options: FetchOptions = {}) {
 		let retries = 0
@@ -281,7 +280,7 @@ export class AbstractServer {
 			throw "This key uses a unsupported and deprecated scraper user encryption method, please convert your users to the new encryption method via the RT-CV dashboard"
 		}
 
-		return this.shuffle(users)
+		return shuffle(users)
 	}
 
 	public async reportLoginSuccess(usernameOrUser: string | LoginUser) {
@@ -384,15 +383,6 @@ export class AbstractServer {
 			"/api/v1/siteStorageCredentials/" + credential.id + "/validate",
 			{ method: "PATCH" }
 		)
-	}
-
-	private shuffle<T>(array: T[]) {
-		for (let i = array.length - 1; i > 0; i--) {
-			const j = Math.floor(Math.random() * (i + 1))
-			;[array[i], array[j]] = [array[j], array[i]]
-		}
-
-		return array
 	}
 
 	protected validateCv(cv: Cv) {
@@ -517,6 +507,10 @@ export class AbstractServer {
 	// Private methods
 	// ---
 
+	private get authorizationHeader() {
+		return `Basic ${this.primaryServerAuth.username}:${this.primaryServerAuth.password}`
+	}
+
 	private outerHandleRequest(request: Request): PotentialPromise<Response> {
 		// NOTE: Try not to mark this function as async..
 		// Most javascript servers are way faster when they don't get promise responses
@@ -638,7 +632,7 @@ export class AbstractServer {
 		return response
 	}
 
-	private async setSlug(slug: string) {
+	private async setSlug() {
 		console.log("Setting slug in rt-cv...")
 
 		let slugResponse: {
@@ -651,7 +645,7 @@ export class AbstractServer {
 				"/api/v1/scraper/setSlug",
 				{
 					method: "PUT",
-					body: { slug: slug },
+					body: { slug: this.slug },
 				}
 			)
 		} catch (e) {
@@ -677,4 +671,13 @@ export class AbstractServer {
 		}
 		return v
 	}
+}
+
+function shuffle<T>(array: T[]) {
+	for (let i = array.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1))
+		;[array[i], array[j]] = [array[j], array[i]]
+	}
+
+	return array
 }
