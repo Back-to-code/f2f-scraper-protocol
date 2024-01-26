@@ -188,7 +188,7 @@ export class AbstractServer {
 	// Public methods
 	// ---
 
-	public statsServer(port = 9091): AbstractStats {
+	public startStatsServer(port = 9091): AbstractStats {
 		const prefix = this.slug.replace("-", "_") + "_"
 		return this.common.statsServer(prefix, port)
 	}
