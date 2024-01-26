@@ -1,13 +1,17 @@
 import { Cv } from "./cv.ts"
-import { SiteStorageCredentialsValue } from "./server.ts"
+import { AbstractServer, SiteStorageCredentialsValue } from "./server.ts"
 
 export type PotentialPromise<T> = T | Promise<T>
 
 export type CustomHandlerCallback = (
+	server: AbstractServer,
 	request: Request
 ) => PotentialPromise<Response>
 
-type ApiHandler = (request: Request) => PotentialPromise<Response>
+type ApiHandler = (
+	server: AbstractServer,
+	request: Request
+) => PotentialPromise<Response>
 type ApiHandlers = Record<string, ApiHandler>
 
 export interface CustomHandler {
@@ -17,12 +21,14 @@ export interface CustomHandler {
 }
 
 export interface Handlers {
-	cv?: (referenceNr: string) => PotentialPromise<Cv>
+	cv?: (server: AbstractServer, referenceNr: string) => PotentialPromise<Cv>
 	checkCredentials?: (
+		server: AbstractServer,
 		username: string,
 		password: string
 	) => PotentialPromise<boolean>
 	checkSiteStorageCredentials?: (
+		server: AbstractServer,
 		credentials: SiteStorageCredentialsValue
 	) => PotentialPromise<boolean>
 }
@@ -49,7 +55,7 @@ export function resolveApiHandler(
 function apiHandlers(handlers: Handlers): ApiHandlers {
 	return {
 		"GET /health": () => Response.json({ status: "ok" }, { status: 200 }),
-		"POST /cv": async (request) => {
+		"POST /cv": async (server, request) => {
 			if (!handlers.cv) {
 				return notImplementedResponse()
 			}
@@ -76,7 +82,7 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 			}
 
 			try {
-				const cv = await handlers.cv(body.referenceNr)
+				const cv = await handlers.cv(server, body.referenceNr)
 				return Response.json({ cv })
 			} catch (e) {
 				console.log("Failed to fetch cv, error: ", e)
@@ -86,7 +92,7 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 				)
 			}
 		},
-		"POST /check-credentials": async (request) => {
+		"POST /check-credentials": async (server, request) => {
 			if (!handlers.checkCredentials) {
 				return notImplementedResponse()
 			}
@@ -110,6 +116,7 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 
 			try {
 				const valid = await handlers.checkCredentials(
+					server,
 					body.username,
 					body.password
 				)
@@ -122,7 +129,7 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 				)
 			}
 		},
-		"POST /check-site-storage-credentials": async (request) => {
+		"POST /check-site-storage-credentials": async (server, request) => {
 			if (!handlers.checkSiteStorageCredentials) {
 				return notImplementedResponse()
 			}
@@ -180,7 +187,10 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 			}
 
 			try {
-				const valid = await handlers.checkSiteStorageCredentials(body)
+				const valid = await handlers.checkSiteStorageCredentials(
+					server,
+					body
+				)
 				return Response.json({ valid })
 			} catch (e) {
 				console.log("Failed to check credentials, error:")

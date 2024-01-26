@@ -2,10 +2,10 @@ import { Cv, Handlers, Server } from "../mod.ts"
 import "https://deno.land/std@0.190.0/dotenv/load.ts"
 
 const handlers: Handlers = {
-	checkCredentials(username, password) {
+	checkCredentials(_server, username, password) {
 		return username == "root" && password == "toor"
 	},
-	checkSiteStorageCredentials(credentials) {
+	checkSiteStorageCredentials(_server, credentials) {
 		if (!credentials.cookies) return false
 		for (const [name, values] of Object.entries(credentials.cookies)) {
 			for (const value of values) {
@@ -25,7 +25,7 @@ const server = new Server("scraper-name-as-slug", handlers, {
 		{
 			method: "GET",
 			path: "/hello",
-			handler: (_: Request) => {
+			handler: (_server, _: Request) => {
 				return new Response("Hello World")
 			},
 		},

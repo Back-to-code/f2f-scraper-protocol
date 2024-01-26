@@ -627,7 +627,7 @@ export class AbstractServer {
 
 		if (!apiHandler) return this.notFoundResponse()
 
-		const response = apiHandler(request)
+		const response = apiHandler(this, request)
 		if (!response) return this.notFoundResponse()
 		return response
 	}

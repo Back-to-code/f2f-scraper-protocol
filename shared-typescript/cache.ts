@@ -17,6 +17,10 @@ export class CvCache {
 		this.statsGauge = stats?.gauge("csv_cache_size")
 	}
 
+	set stats(stats: AbstractStats | undefined) {
+		this.statsGauge = stats?.gauge("csv_cache_size")
+	}
+
 	store(cv: Cv) {
 		this.cleanupLoop()
 
