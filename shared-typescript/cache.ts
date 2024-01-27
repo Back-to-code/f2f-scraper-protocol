@@ -31,6 +31,8 @@ export class CvCache {
 			cv,
 			ttl: now.getTime(),
 		})
+
+		this.statsGauge?.set(this.cvs.size)
 	}
 
 	has(referenceNumber: string): Cv | undefined {
