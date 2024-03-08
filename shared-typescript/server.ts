@@ -456,9 +456,6 @@ export class AbstractServer {
 
 	// sendCvDocument sends a CV document to RT-CV
 	public async sendCvDocument(metadata: Cv, cvFile: Blob) {
-		this.alternativeServer?.sendCvDocument(metadata, cvFile).catch((e) => {
-			console.log("failed to send cv document to alternative server,", e)
-		})
 		const body = new FormData()
 
 		body.set("metadata", JSON.stringify(metadata))
@@ -468,6 +465,17 @@ export class AbstractServer {
 			body,
 			method: "POST",
 		})
+
+		// Only send the cv document to the alternative server once the primary server has successfully received it
+		// We do this for 2 reasons:
+		//   1. Scanning the cv documents takes up api credits.
+		//      While we cache the results for a short time it is only cached after the cv is scanned,
+		//      This means that if both servers scan the cv document at the same time
+		//      we won't be able to cache the results as the first scan has not yet been completed.
+		//   2. If the primary server fails to scan the cv document the alternative server will also very likely fail.
+		//      99% of the fail cases it's because of a unpasable cv document and as both servers use the same scanning api/service
+		//      there is no point in trying the alternative server if the primary server fails.
+		this.alternativeServer?.sendCvDocument(metadata, cvFile)
 	}
 
 	// startServer starts the server and listens for incoming connections
