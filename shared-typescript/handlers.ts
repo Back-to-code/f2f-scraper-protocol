@@ -21,7 +21,18 @@ export interface CustomHandler {
 }
 
 export interface Handlers {
-	cv?: (server: AbstractServer, referenceNr: string) => PotentialPromise<Cv>
+	cv?: (
+		server: AbstractServer,
+		referenceNr: string
+	) => PotentialPromise<{ cv: Cv; hasDocument?: boolean }>
+	cvDocument?: (
+		server: AbstractServer,
+		referenceNr: string
+	) => PotentialPromise<{
+		data: Uint8Array
+		filename?: string
+		mimeType?: string
+	}>
 	checkCredentials?: (
 		server: AbstractServer,
 		username: string,
@@ -60,34 +71,56 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 				return notImplementedResponse()
 			}
 
-			const body = await request.json()
-
-			const bodyError = () =>
-				new Response("Expected a body with a referenceNr", {
-					status: 400,
-				})
-
-			if (typeof body !== "object" || body === null) {
-				return bodyError()
-			}
-
-			if (!("referenceNr" in body)) {
-				return bodyError()
-			}
-
-			if (typeof body.referenceNr !== "number") {
-				body.referenceNr = body.referenceNr.toString()
-			} else if (typeof body.referenceNr !== "string") {
-				return bodyError()
+			const referenNrOrError = await referenceNrFromBody(request)
+			if (referenNrOrError instanceof Response) {
+				// referenNrOrError is an error
+				return referenNrOrError
 			}
 
 			try {
-				const cv = await handlers.cv(server, body.referenceNr)
-				return Response.json({ cv })
+				const response = await handlers.cv(server, referenNrOrError)
+				return Response.json(response)
 			} catch (e) {
 				console.log("Failed to fetch cv, error: ", e)
 				return Response.json(
 					{ error: "Failed to fetch cv by reference number" },
+					{ status: 500 }
+				)
+			}
+		},
+		"POST /cv-document": async (server, request) => {
+			if (!handlers.cvDocument) {
+				return notImplementedResponse()
+			}
+
+			const referenNrOrError = await referenceNrFromBody(request)
+			if (referenNrOrError instanceof Response) {
+				// is error
+				return referenNrOrError
+			}
+
+			try {
+				const cvDocument = await handlers.cvDocument(
+					server,
+					referenNrOrError
+				)
+
+				const headers: Record<string, string> = {}
+
+				if (cvDocument.filename) {
+					headers["Filename"] = cvDocument.filename
+				}
+				if (cvDocument.mimeType) {
+					headers["Content-Type"] = cvDocument.mimeType
+				}
+
+				return new Response(cvDocument.data, { headers })
+			} catch (e) {
+				console.log("Failed to fetch cv document, error: ", e)
+				return Response.json(
+					{
+						error: "Failed to fetch cv document by reference number",
+					},
 					{ status: 500 }
 				)
 			}
@@ -212,4 +245,31 @@ export function resolveExternalHandler(
 	path: string
 ): ApiHandler | undefined {
 	return handlers.get(`${method} ${path}`)
+}
+
+async function referenceNrFromBody(
+	request: Request
+): Promise<string | Response> {
+	const body = await request.json()
+
+	const bodyError = () =>
+		new Response("Expected a body with a referenceNr", {
+			status: 400,
+		})
+
+	if (typeof body !== "object" || body === null) {
+		return bodyError()
+	}
+
+	if (!("referenceNr" in body)) {
+		return bodyError()
+	}
+
+	if (typeof body.referenceNr !== "number") {
+		body.referenceNr = body.referenceNr.toString()
+	} else if (typeof body.referenceNr !== "string") {
+		return bodyError()
+	}
+
+	return body.referenceNr
 }

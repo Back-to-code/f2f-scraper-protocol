@@ -21,7 +21,7 @@ import {
 } from "scraper-protocol"
 
 const handlers: Handlers = {
-	checkCredentials(username, password) {
+	checkCredentials(_server, username, password) {
 		return username == "root" && password == "toor"
 	},
 }

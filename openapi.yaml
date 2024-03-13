@@ -18,11 +18,8 @@ info:
     ```
 servers:
   - url: https://werk-scraper.fly.dev
-  - url: https://uitzendbureau-scraper.fly.dev
-  - url: https://nvb-scraper.fly.dev
   - url: https://ikbenbeschikbaar-scraper.fly.dev
   - url: https://debanensite-scraper.fly.dev
-  - url: https://jobbird-scraper.fly.dev
   - url: https://techniekwerkt-scraper.fly.dev
   - url: https://f2f-linkedin-scraper.fly.dev
 security:
@@ -64,6 +61,47 @@ paths:
                   cv:
                     description: Contians the cv in the, the format of the cv is described by the RT-CV server https://bitbucket.org/teamscript/rt-cv/src/main/models/cv.go#lines-18
                     type: object
+                  hasDocument:
+                    description: Indicates if this cv has a cv document attached and the cv mata mostly likely is minimal
+                    type: boolean
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/UnauthorizedError"
+        404:
+          $ref: "#/components/responses/NotImplemented"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /cv-document:
+    post:
+      description:
+        Get a CV Document by it's reference number,
+        you can check if a cv has a document by using the /cv endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - referenceNr
+              properties:
+                referenceNr:
+                  type: string
+                  minLength: 1
+      responses:
+        200:
+          description:
+            The CV document
+          headers:
+            Content-Type:
+              description: The document mimetype of the cv document
+              schema:
+                type: string
+            Filename:
+              description: The filename of the cv document
+              schema:
+                type: string
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -93,7 +131,7 @@ paths:
                   minLength: 1
       responses:
         200:
-          description: The given credentials where checked correctly but
+          description: The given credentials where checked correctly
           content:
             application/json:
               schema:

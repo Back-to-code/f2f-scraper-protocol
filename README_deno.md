@@ -13,7 +13,7 @@ import {
 } from "https://bitbucket.org/teamscript/scraper-protocol/raw/b611ec2ba48618db7b65a340213da25bf7050df8/mod.ts"
 
 const handlers: Handlers = {
-	checkCredentials(username, password) {
+	checkCredentials(_server, username, password) {
 		return username == "root" && password == "toor"
 	},
 }
