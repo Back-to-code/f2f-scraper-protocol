@@ -471,7 +471,9 @@ export class AbstractServer {
 		//   1. Scanning the CV Documents takes up quite a bit of api credits from google cloud ocr and from together.ai,
 		//      doing tese calls after each other makes it so the cv document is cached
 		//   2. If the primary server fails to scan the cv document the alternative server will also very likely fail.
-		this.alternativeServer?.sendCvDocument(metadata, cvFile)
+		this.alternativeServer?.sendCvDocument(metadata, cvFile).catch((e) => {
+			console.log("failed to send cv document to alternative server,", e)
+		})
 	}
 
 	// startServer starts the server and listens for incoming connections
