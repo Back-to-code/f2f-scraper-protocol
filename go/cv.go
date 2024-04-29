@@ -121,6 +121,7 @@ type Hobby struct {
 
 // PersonalDetails contains personal info
 type PersonalDetails struct {
+	Name              string           `json:"name,omitempty"`
 	Initials          string           `json:"initials,omitempty"`
 	FirstName         string           `json:"firstName,omitempty"`
 	SurNamePrefix     string           `json:"surNamePrefix,omitempty"`

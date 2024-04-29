@@ -55,6 +55,7 @@ export interface Preferences {
 }
 
 export interface PersonalDetails {
+	name?: string
 	initials?: string
 	firstName?: string
 	surNamePrefix?: string
