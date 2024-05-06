@@ -26,22 +26,30 @@ func (t JSONRFC3339Nano) ToPtr() *JSONRFC3339Nano {
 // CV contains all information that belongs to a curriculum vitae
 // TODO check the json removed fields if we actually should use them
 type CV struct {
-	Title           *string          `json:"title,omitempty"`
-	Presentation    string           `json:"presentation,omitempty"`
-	ReferenceNumber string           `json:"referenceNumber,omitempty"`
-	Link            *string          `json:"link,omitempty"`
-	CreatedAt       *JSONRFC3339Nano `json:"createdAt,omitempty"`
-	LastChanged     *JSONRFC3339Nano `json:"lastChanged,omitempty"`
-	Educations      []Education      `json:"educations,omitempty"`
-	WorkExperiences []WorkExperience `json:"workExperiences,omitempty"`
-	PreferredJobs   []string         `json:"preferredJobs,omitempty"`
-	Preferences     *Preferences     `json:"preferences,omitempty"`
-	Languages       []Language       `json:"languages,omitempty"`
-	Competences     []Competence     `json:"-"` // Not supported yet
-	Hobbies         []Hobby          `json:"hobbies,omitempty"`
-	PersonalDetails PersonalDetails  `json:"personalDetails,omitempty"`
-	DriversLicenses []string         `json:"driversLicenses,omitempty"`
-	Type            CVType           `json:"cvType,omitempty"`
+	Title               *string             `json:"title,omitempty"`
+	Presentation        string              `json:"presentation,omitempty"`
+	ReferenceNumber     string              `json:"referenceNumber,omitempty"`
+	Link                *string             `json:"link,omitempty"`
+	CreatedAt           *JSONRFC3339Nano    `json:"createdAt,omitempty"`
+	LastChanged         *JSONRFC3339Nano    `json:"lastChanged,omitempty"`
+	Educations          []Education         `json:"educations,omitempty"`
+	WorkExperiences     []WorkExperience    `json:"workExperiences,omitempty"`
+	PreferredJobs       []string            `json:"preferredJobs,omitempty"`
+	Preferences         *Preferences        `json:"preferences,omitempty"`
+	Languages           []Language          `json:"languages,omitempty"`
+	Competences         []Competence        `json:"-"` // Not supported yet
+	Hobbies             []Hobby             `json:"hobbies,omitempty"`
+	PersonalDetails     PersonalDetails     `json:"personalDetails,omitempty"`
+	DriversLicenses     []string            `json:"driversLicenses,omitempty"`
+	Type                CVType              `json:"cvType,omitempty"`
+	UnsupportedCVFields UnsupportedCVFields `json:"unsupportedCVFields"`
+}
+
+// UnsupportedCVFields is a list of fields that where not provided by the scraper as they are not supported or unknown.
+// Note these fields should only be set if the fields are not supported by the scraper or if there is no mention of the field.
+// This should NOT be provided if there is a mention of a field but no contents
+type UnsupportedCVFields struct {
+	DriversLicense bool `json:"driversLicense"`
 }
 
 // Preferences contains preferred  job preferences

@@ -14,7 +14,11 @@ export interface Cv {
 	personalDetails?: PersonalDetails
 	driversLicenses?: Array<string>
 	type?: CVTypes
-	notSendFieldsNumbers?: NotSendFieldsNumbers
+	unsupportedCVFields?: UnsupportedCVFields
+}
+
+export interface UnsupportedCVFields {
+	driversLicense?: boolean
 }
 
 export type CVTypes = "lead" | "potential_candidate"
@@ -88,13 +92,4 @@ export enum LanguageLevel {
 	Reasonable = 1,
 	Good = 2,
 	Excellent = 3,
-}
-
-export interface NotSendFieldsNumbers {
-	educations: number
-	workExperiences: number
-	preferredJobs: number
-	languages: number
-	hobbies: number
-	driverLicenses: number
 }
