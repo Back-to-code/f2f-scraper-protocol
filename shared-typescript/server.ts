@@ -481,11 +481,41 @@ export class AbstractServer {
 	}
 
 	// sendCvDocument sends a CV document to RT-CV
-	public async sendCvDocument(metadata: Cv, cvFile: Blob) {
+	public async sendCvDocument(metadata: Cv, cvFile: Blob, filename?: string) {
 		const body = new FormData()
 
 		body.set("metadata", JSON.stringify(metadata))
-		body.set("cv", cvFile, "cv.pdf")
+		const mimeTypeToExt: Record<string, string> = {
+			// Pdf
+			"application/pdf": "pdf",
+			"application/x-pdf": "pdf",
+			// Word
+			"application/msword": "doc",
+			"application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+				"docx",
+			"application/vnd.openxmlformats-officedocument.wordprocessingml.template":
+				"dotx",
+			"application/vnd.ms-word.document.macroEnabled.12": "docm",
+			"application/vnd.ms-word.template.macroEnabled.12": "dotm",
+			// Images
+			"image/png": "png",
+			"image/jpeg": "jpg",
+			"image/jpg": "jpg",
+		}
+		const fileExt =
+			mimeTypeToExt[cvFile.type] ?? cvFile.type.startsWith("image/")
+				? cvFile.type.split("/")[1].split(" ")[0]
+				: "pdf"
+
+		if (!filename) filename = "cv." + fileExt
+
+		body.set(
+			"cv",
+			cvFile,
+			filename.split(".").length === 1
+				? filename + "." + fileExt
+				: filename
+		)
 
 		await this.fetchWithRetry("/api/v1/scraper/scanCVDocument", {
 			body,
