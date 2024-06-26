@@ -416,17 +416,43 @@ export class AbstractServer {
 	}
 
 	// Send a scraped CV to RT-CV
-	public async sendCv(cv: Cv, preValidation = true) {
+	public async sendCv(cv: Cv, preValidation = true): Promise<void> {
 		if (preValidation) this.validateCv(cv)
 
 		this.alternativeServer?.sendCv(cv, false).catch((e) => {
 			console.log("failed to send cv to alternative server,", e)
 		})
 
-		await this.fetchWithRetry("/api/v1/scraper/scanCV", {
-			body: { cv },
-			method: "POST",
-		})
+		try {
+			await this.fetchWithRetry("/api/v1/scraper/scanCV", {
+				body: { cv },
+				method: "POST",
+			})
+		} catch (e) {
+			if (cv.personalDetails && e instanceof FetchError) {
+				let alteredCv = false
+
+				// Lets check if we can remove the fields that gave an error and try it again
+				if (
+					(e.response.includes("phone number") ||
+						e.response.includes("phonenumber")) &&
+					cv.personalDetails
+				) {
+					alteredCv = true
+					cv.personalDetails.phoneNumber = undefined
+				}
+				if (e.response.includes("email") && cv.personalDetails) {
+					alteredCv = true
+					cv.personalDetails.email = undefined
+				}
+
+				if (alteredCv) {
+					return await this.sendCv(cv, false)
+				}
+			}
+
+			throw e
+		}
 	}
 
 	public async sendCvsList(cvs: Array<Cv>, preValidation = true) {
