@@ -502,8 +502,9 @@ export class AbstractServer {
 			"image/jpeg": "jpg",
 			"image/jpg": "jpg",
 		}
-		const fileExt =
-			mimeTypeToExt[cvFile.type] ?? cvFile.type.startsWith("image/")
+		let fileExt = mimeTypeToExt[cvFile.type]
+		if (!fileExt)
+			fileExt = cvFile.type.startsWith("image/")
 				? cvFile.type.split("/")[1].split(" ")[0]
 				: "pdf"
 
