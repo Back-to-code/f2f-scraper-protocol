@@ -6,7 +6,7 @@
     "bun-types": "latest"
   },
   "peerDependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "^5.3.3"
   },
-  "dependencies": { "prom-client": "^15.1.0" }
+  "dependencies": { "prom-client": "^15.1.3" }
 }
