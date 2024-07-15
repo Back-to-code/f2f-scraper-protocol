@@ -1,3 +1,27 @@
+export function isRecentCv(
+	dateModifiedOrCv: string | Cv | null | undefined
+): boolean {
+	let dateModified: string | undefined
+	if (typeof dateModifiedOrCv === "string") {
+		dateModified = dateModifiedOrCv
+	} else if (!dateModifiedOrCv) {
+		dateModified = undefined
+	} else {
+		dateModified = dateModifiedOrCv.lastChanged
+	}
+	if (!dateModified) return true
+
+	const now = new Date()
+	const date = new Date(dateModified)
+
+	// Calculate the difference in milliseconds
+	const dateDiff = now.getTime() - date.getTime()
+	if (dateDiff < 0) return true
+
+	const ONE_DAY = 24 * 60 * 60 * 1000
+	return dateDiff < ONE_DAY
+}
+
 export interface Cv {
 	title?: string
 	presentation?: string
