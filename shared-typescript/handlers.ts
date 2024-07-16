@@ -1,4 +1,5 @@
 import { Cv } from "./cv.ts"
+import { formatCvFilename } from "./cv_document.ts"
 import { AbstractServer, SiteStorageCredentialsValue } from "./server.ts"
 
 export type PotentialPromise<T> = T | Promise<T>
@@ -107,9 +108,10 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 
 				const headers: Record<string, string> = {}
 
-				if (cvDocument.filename) {
-					headers["Filename"] = cvDocument.filename
-				}
+				headers["Filename"] = formatCvFilename(
+					cvDocument.filename,
+					cvDocument.mimeType
+				)
 				if (cvDocument.mimeType) {
 					headers["Content-Type"] = cvDocument.mimeType
 				}

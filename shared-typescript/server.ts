@@ -8,6 +8,7 @@ import {
 } from "./handlers.ts"
 import { type Cv } from "./cv.ts"
 import { AbstractStats } from "./stats.ts"
+import { formatCvFilename } from "./cv_document.ts"
 
 export interface ServerOptions {
 	// Required (If not set by env variables):
@@ -485,38 +486,7 @@ export class AbstractServer {
 		const body = new FormData()
 
 		body.set("metadata", JSON.stringify(metadata))
-		const mimeTypeToExt: Record<string, string> = {
-			// Pdf
-			"application/pdf": "pdf",
-			"application/x-pdf": "pdf",
-			// Word
-			"application/msword": "doc",
-			"application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-				"docx",
-			"application/vnd.openxmlformats-officedocument.wordprocessingml.template":
-				"dotx",
-			"application/vnd.ms-word.document.macroEnabled.12": "docm",
-			"application/vnd.ms-word.template.macroEnabled.12": "dotm",
-			// Images
-			"image/png": "png",
-			"image/jpeg": "jpg",
-			"image/jpg": "jpg",
-		}
-		let fileExt = mimeTypeToExt[cvFile.type]
-		if (!fileExt)
-			fileExt = cvFile.type.startsWith("image/")
-				? cvFile.type.split("/")[1].split(" ")[0]
-				: "pdf"
-
-		if (!filename) filename = "cv." + fileExt
-
-		body.set(
-			"cv",
-			cvFile,
-			filename.split(".").length === 1
-				? filename + "." + fileExt
-				: filename
-		)
+		body.set("cv", cvFile, formatCvFilename(filename, cvFile.type))
 
 		await this.fetchWithRetry("/api/v1/scraper/scanCVDocument", {
 			body,
