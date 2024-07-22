@@ -4,6 +4,7 @@ const MIME_TYPE_TO_EXT: Readonly<Record<string, string>> = {
 	"application/x-pdf": "pdf",
 	// Word
 	"application/msword": "doc",
+	"application/vnd.openxmlformats-officedocument": "docx",
 	"application/vnd.openxmlformats-officedocument.wordprocessingml.document":
 		"docx",
 	"application/vnd.openxmlformats-officedocument.wordprocessingml.template":
