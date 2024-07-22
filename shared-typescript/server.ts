@@ -229,6 +229,9 @@ export class AbstractServer {
 	// Make a request to RT-CV
 	// Returns the response decoded as JSOn
 	public async fetch(path: string, options: FetchOptions = {}) {
+		const controller = new AbortController()
+		const id = setTimeout(() => controller.abort(), 60_000)
+
 		const fetchOptions: Parameters<typeof fetch>[1] = {
 			method: options.method,
 			headers: {
@@ -236,6 +239,7 @@ export class AbstractServer {
 				Accept: "application/json",
 				Authorization: this.authorizationHeader,
 			},
+			signal: controller.signal,
 		}
 
 		if (options.body) {
@@ -252,6 +256,7 @@ export class AbstractServer {
 		}
 
 		const r = await fetch(this.apiServer + path, fetchOptions)
+		clearTimeout(id)
 		if (r.status >= 400) {
 			throw new FetchError(await r.text(), path, r.status)
 		}
