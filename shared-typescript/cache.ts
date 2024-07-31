@@ -25,7 +25,7 @@ export class CvCache {
 		this.cleanupLoop()
 
 		const now = new Date()
-		now.setDate(now.getDate() + 1)
+		now.setHours(now.getHours() + 16)
 
 		this.cvs.set(cv.referenceNumber!, {
 			cv,
