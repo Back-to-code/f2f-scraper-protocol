@@ -1,5 +1,5 @@
 export function isRecentCv(
-	dateModifiedOrCv: string | Cv | null | undefined
+	dateModifiedOrCv: string | Cv | null | undefined,
 ): boolean {
 	let dateModified: string | undefined
 	if (typeof dateModifiedOrCv === "string") {
@@ -39,10 +39,15 @@ export interface Cv {
 	driversLicenses?: Array<string>
 	type?: CVTypes
 	unsupportedCVFields?: UnsupportedCVFields
+	vacancyInfo?: VacancyInfo
 }
 
 export interface UnsupportedCVFields {
 	driversLicense?: boolean
+}
+
+export interface VacancyInfo {
+	name: string
 }
 
 export type CVTypes = "lead" | "potential_candidate"
