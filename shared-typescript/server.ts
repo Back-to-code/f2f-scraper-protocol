@@ -32,6 +32,7 @@ export interface FetchOptions {
 export interface LoginUser {
 	username: string
 	password: string
+	invalid: boolean
 }
 
 export interface SiteStorageCredentialsValue {
