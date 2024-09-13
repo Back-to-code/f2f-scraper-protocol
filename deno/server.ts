@@ -36,7 +36,24 @@ class DenoLangSpecifics implements LangSpecifics {
 	) {
 		const httpConn = Deno.serveHttp(conn)
 		for await (const requestEvent of httpConn) {
-			await requestEvent.respondWith(handler(requestEvent.request))
+			let response: Response
+			try {
+				response = await handler(requestEvent.request)
+			} catch (e) {
+				console.error(e)
+				response = Response.json(
+					{ error: "Internal Server Error" },
+					{
+						status: 500,
+					}
+				)
+			}
+
+			try {
+				await requestEvent.respondWith(response)
+			} catch (e) {
+				console.error("failed to respond", e)
+			}
 		}
 	}
 	statsServer(prefix: string, port: number): AbstractStats {

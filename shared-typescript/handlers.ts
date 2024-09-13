@@ -135,9 +135,10 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 			const body = await request.json()
 
 			const bodyError = () =>
-				new Response("Expected a body with a username and password", {
-					status: 400,
-				})
+				Response.json(
+					{ error: "Expected a body with a username and password" },
+					{ status: 400 }
+				)
 
 			if (typeof body !== "object" || body === null) {
 				return bodyError()
@@ -180,9 +181,10 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 			}
 
 			const bodyError = (error: string) =>
-				new Response(`Failed to parse body, error: ${error}`, {
-					status: 400,
-				})
+				Response.json(
+					{ error: `Failed to parse body, error: ${error}` },
+					{ status: 400 }
+				)
 
 			if (typeof body !== "object" || body === null) {
 				return bodyError("body is not an object")
@@ -255,9 +257,10 @@ async function referenceNrFromBody(
 	const body = await request.json()
 
 	const bodyError = () =>
-		new Response("Expected a body with a referenceNr", {
-			status: 400,
-		})
+		Response.json(
+			{ error: "Expected a body with a referenceNr" },
+			{ status: 400 }
+		)
 
 	if (typeof body !== "object" || body === null) {
 		return bodyError()
