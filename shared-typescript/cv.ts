@@ -29,6 +29,7 @@ export interface Cv {
 	link?: string
 	createdAt?: string // assuming JSONRFC3339Nano is a custom date format
 	lastChanged?: string // assuming JSONRFC3339Nano is a custom date format
+	timeless?: boolean // Timeless is a field that tells if the cv is allways realtime
 	educations?: Array<Education>
 	workExperiences?: Array<WorkExperience>
 	preferredJobs?: Array<string>
