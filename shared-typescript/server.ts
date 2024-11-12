@@ -47,6 +47,15 @@ export interface SiteStorageCredentials extends SiteStorageCredentialsValue {
 	hiddenCredentials: boolean
 }
 
+export interface Candidate {
+	id: string
+	createdAt: string
+	updatedAt: string
+	invite?: string
+	cv?: Cv
+	referenceNr: string
+}
+
 interface ServerAuth {
 	username: string
 	password: string
@@ -195,7 +204,10 @@ export class AbstractServer {
 		return this.common.statsServer(prefix, port)
 	}
 
-	public async fetchWithRetry(path: string, options: FetchOptions = {}) {
+	public async fetchWithRetry<T = unknown>(
+		path: string,
+		options: FetchOptions = {}
+	): Promise<T> {
 		let retries = 0
 		while (true) {
 			try {
@@ -205,10 +217,19 @@ export class AbstractServer {
 					e instanceof FetchError &&
 					e.status >= 400 &&
 					e.parsedResponse &&
-					e.parsedResponse?.kind === "INPUT_VALIDATION"
+					e.parsedResponse?.kind
 				) {
-					// This request wil keep failing as there is an error on our end, so we should not retry
-					throw e
+					const kind = e.parsedResponse.kind as string
+
+					if (
+						kind.startsWith("AUTH_") ||
+						kind === "INPUT_VALIDATION" ||
+						kind === "BOGUS_FORM_DATA" ||
+						kind === "APP_INTERNAL_CONFIG"
+					) {
+						// This request wil keep failing as there is an error on our end, so we should not retry
+						throw e
+					}
 				}
 
 				if (retries < 3) {
@@ -229,7 +250,10 @@ export class AbstractServer {
 
 	// Make a request to RT-CV
 	// Returns the response decoded as JSOn
-	public async fetch(path: string, options: FetchOptions = {}) {
+	public async fetch<T = unknown>(
+		path: string,
+		options: FetchOptions = {}
+	): Promise<T> {
 		const controller = new AbortController()
 		const id = setTimeout(() => controller.abort(), 60_000)
 
@@ -540,6 +564,15 @@ export class AbstractServer {
 
 			this.externalHandlers.set(methodPathString, handlerFunc)
 		}
+	}
+
+	public candidateRequestPersonalDetials(
+		referenceNr: string
+	): Promise<{ candidate: Candidate; created: boolean }> {
+		return this.fetch("/api/v1/candidates", {
+			method: "POST",
+			body: { referenceNr },
+		})
 	}
 
 	// ---
