@@ -90,7 +90,7 @@ export interface LangSpecifics {
 	// Create a http server that listens for incoming connections and calls the handler function for each request
 	httpServer(
 		port: number,
-		handler: (request: Request) => PotentialPromise<Response>
+		handler: (request: Request) => PotentialPromise<Response>,
 	): Promise<void>
 
 	// Create stats server
@@ -110,7 +110,7 @@ export class AbstractServer {
 		private common: LangSpecifics,
 		public readonly slug: string,
 		private handlers: Handlers,
-		options: ServerOptions
+		options: ServerOptions,
 	) {
 		const potentialsServerPort = this.mightGetEnv("SERVER_PORT")
 		if (potentialsServerPort) {
@@ -122,18 +122,18 @@ export class AbstractServer {
 			this.port = options.port ?? 3000
 		}
 		const apiServer = new URL(
-			options.apiServer || this.mustGetEnv("RTCV_SERVER")
+			options.apiServer || this.mustGetEnv("RTCV_SERVER"),
 		)
 		if (!apiServer.username || !apiServer.password) {
 			console.log(
-				"RTCV_SERVER url must contain api credentials like: https://key_id:key@example.com"
+				"RTCV_SERVER url must contain api credentials like: https://key_id:key@example.com",
 			)
 			this.common.exit1()
 		}
 
 		if (slug === "" && !options.skipSlugCheck) {
 			console.log(
-				"Error: slug is required for the scraper to be identifiable! If you are sure that you want to run the scraper without a slug, use the skipSlugCheck option in options."
+				"Error: slug is required for the scraper to be identifiable! If you are sure that you want to run the scraper without a slug, use the skipSlugCheck option in options.",
 			)
 			this.common.exit1()
 		}
@@ -189,7 +189,7 @@ export class AbstractServer {
 						apiServer: alternativeServer,
 						alternativeServer: false,
 						port: this.port,
-					}
+					},
 				)
 			}
 		}
@@ -206,7 +206,7 @@ export class AbstractServer {
 
 	public async fetchWithRetry<T = unknown>(
 		path: string,
-		options: FetchOptions = {}
+		options: FetchOptions = {},
 	): Promise<T> {
 		let retries = 0
 		while (true) {
@@ -236,10 +236,10 @@ export class AbstractServer {
 					retries++
 					const waitSeconds = retries * 3
 					console.log(
-						`failed to fetch ${path}, retrying in ${waitSeconds} second`
+						`failed to fetch ${path}, retrying in ${waitSeconds} second`,
 					)
 					await new Promise((resolve) =>
-						setTimeout(resolve, waitSeconds * 1000)
+						setTimeout(resolve, waitSeconds * 1000),
 					)
 				} else {
 					throw e
@@ -252,7 +252,7 @@ export class AbstractServer {
 	// Returns the response decoded as JSOn
 	public async fetch<T = unknown>(
 		path: string,
-		options: FetchOptions = {}
+		options: FetchOptions = {},
 	): Promise<T> {
 		const controller = new AbortController()
 		const id = setTimeout(() => controller.abort(), 60_000)
@@ -296,7 +296,7 @@ export class AbstractServer {
 
 	// get all login users for the api key
 	public async getUsers(
-		mustBeAtLeastOneUser: boolean
+		mustBeAtLeastOneUser: boolean,
 	): Promise<Array<LoginUser>> {
 		const { users } = await this.fetchWithRetry("/api/v1/scraperUsers")
 
@@ -305,7 +305,7 @@ export class AbstractServer {
 		}
 
 		const usersWithoutPasswords = users.filter(
-			(user: LoginUser) => !user.password
+			(user: LoginUser) => !user.password,
 		).length
 		if (users.length > 0 && usersWithoutPasswords === users.length) {
 			throw "This key uses a unsupported and deprecated scraper user encryption method, please convert your users to the new encryption method via the RT-CV dashboard"
@@ -324,7 +324,7 @@ export class AbstractServer {
 
 	public async reportLoginAttempt(
 		usernameOrUser: string | LoginUser,
-		success: boolean
+		success: boolean,
 	) {
 		const username =
 			typeof usernameOrUser === "string"
@@ -340,19 +340,19 @@ export class AbstractServer {
 						username,
 						success,
 					},
-				}
+				},
 			)
 		} catch (e) {
 			console.warn(
 				`failed to report login ${
 					success ? "success" : "failure"
 				} for user "${username}", error:`,
-				e
+				e,
 			)
 		}
 		await this.alternativeServer?.reportLoginAttempt(
 			usernameOrUser,
-			success
+			success,
 		)
 	}
 
@@ -366,12 +366,12 @@ export class AbstractServer {
 	}> {
 		const credentials: Array<SiteStorageCredentials> =
 			await this.fetchWithRetry(
-				"/api/v1/siteStorageCredentials/scraper/" + this.apiKeyId
+				"/api/v1/siteStorageCredentials/scraper/" + this.apiKeyId,
 			)
 
 		if (!Array.isArray(credentials)) {
 			throw `Unexpected RT-CV response for site credentials, expected array but got ${JSON.stringify(
-				credentials
+				credentials,
 			)}`
 		}
 
@@ -398,21 +398,21 @@ export class AbstractServer {
 
 	// sets the invalid flag of a site storage credential to **true**
 	public invalidateSiteStorageCredential(
-		credential: SiteStorageCredentials
+		credential: SiteStorageCredentials,
 	): Promise<SiteStorageCredentials> {
 		return this.fetchWithRetry(
 			"/api/v1/siteStorageCredentials/" + credential.id + "/invalidate",
-			{ method: "PATCH" }
+			{ method: "PATCH" },
 		)
 	}
 
 	// sets the invalid flag of a site storage credential to **false**
 	public validateSiteStorageCredential(
-		credential: SiteStorageCredentials
+		credential: SiteStorageCredentials,
 	): Promise<SiteStorageCredentials> {
 		return this.fetchWithRetry(
 			"/api/v1/siteStorageCredentials/" + credential.id + "/validate",
-			{ method: "PATCH" }
+			{ method: "PATCH" },
 		)
 	}
 
@@ -538,7 +538,7 @@ export class AbstractServer {
 		console.log(`Listening on http://localhost:${this.port}/`)
 		await this.common.httpServer(
 			this.port,
-			this.outerHandleRequest.bind(this)
+			this.outerHandleRequest.bind(this),
 		)
 	}
 
@@ -558,7 +558,7 @@ export class AbstractServer {
 
 			if (this.externalHandlers.has(methodPathString)) {
 				throw new Error(
-					`Handler already exists for ${methodPathString}`
+					`Handler already exists for ${methodPathString}`,
 				)
 			}
 
@@ -567,12 +567,16 @@ export class AbstractServer {
 	}
 
 	public candidateRequestPersonalDetials(
-		referenceNr: string
+		referenceNr: string,
 	): Promise<{ candidate: Candidate; created: boolean }> {
 		return this.fetch("/api/v1/candidates", {
 			method: "POST",
 			body: { referenceNr },
 		})
+	}
+
+	public cvVisit(referenceNr: string) {
+		return this.fetch("/api/v1/visitedCvs/byReference/" + referenceNr)
 	}
 
 	// ---
@@ -610,7 +614,7 @@ export class AbstractServer {
 
 		if (response instanceof Promise) {
 			return response.then((response) =>
-				this.addCorsHeaderAndLog(response, request, url)
+				this.addCorsHeaderAndLog(response, request, url),
 			)
 		}
 
@@ -620,7 +624,7 @@ export class AbstractServer {
 	private addCorsHeaderAndLog(
 		response: Response,
 		request: Request,
-		url: URL
+		url: URL,
 	): Response {
 		// Set CORS headers
 		response.headers.set("Access-Control-Allow-Origin", "*")
@@ -642,7 +646,7 @@ export class AbstractServer {
 	}
 
 	private requestValidAuth(
-		authorization: string | null
+		authorization: string | null,
 	): Response | undefined {
 		if (!authorization) return this.unauthorizedResponse()
 
@@ -676,24 +680,24 @@ export class AbstractServer {
 
 	private handleRequest(
 		request: Request,
-		pathname: string
+		pathname: string,
 	): PotentialPromise<Response> {
 		const authError = this.requestValidAuth(
-			request.headers.get("Authorization")
+			request.headers.get("Authorization"),
 		)
 		if (authError) return authError
 
 		let apiHandler = resolveApiHandler(
 			this.handlers,
 			request.method,
-			pathname
+			pathname,
 		)
 
 		if (!apiHandler) {
 			apiHandler = resolveExternalHandler(
 				this.externalHandlers,
 				request.method,
-				pathname
+				pathname,
 			)
 		}
 
@@ -718,7 +722,7 @@ export class AbstractServer {
 				{
 					method: "PUT",
 					body: { slug: this.slug },
-				}
+				},
 			)
 		} catch (e) {
 			console.log("error setting slug,", e)
@@ -727,7 +731,7 @@ export class AbstractServer {
 
 		if (slugResponse.overwroteExisting) {
 			console.log(
-				`Warning: Overwrote existing slug ('${slugResponse.oldSlug}') with '${slugResponse.slug}'`
+				`Warning: Overwrote existing slug ('${slugResponse.oldSlug}') with '${slugResponse.slug}'`,
 			)
 		}
 	}
