@@ -61,6 +61,20 @@ interface ServerAuth {
 	password: string
 }
 
+export interface VisitedCv {
+	id: string
+	referenceNr: string
+	contentHash?: VisitedCvContentHash // Deprecated use contentHashes instaid
+	contentHashes?: Array<VisitedCvContentHash>
+	updatedAt: string // rfc3339
+	matchedDate?: string // rfc3339
+}
+
+export interface VisitedCvContentHash {
+	version: string
+	hash: string
+}
+
 export class FetchError {
 	public path: string
 	public status: number
@@ -575,7 +589,7 @@ export class AbstractServer {
 		})
 	}
 
-	public cvVisit(referenceNr: string) {
+	public cvVisit(referenceNr: string): Promise<VisitedCv> {
 		return this.fetch("/api/v1/visitedCvs/byReference/" + referenceNr)
 	}
 
