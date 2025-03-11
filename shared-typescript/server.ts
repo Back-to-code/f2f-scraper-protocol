@@ -241,7 +241,7 @@ export class AbstractServer {
 						kind === "BOGUS_FORM_DATA" ||
 						kind === "APP_INTERNAL_CONFIG"
 					) {
-						// This request wil keep failing as there is an error on our end, so we should not retry
+						// This request will keep failing as there is an error on our end, so we should not retry
 						throw e
 					}
 				}
