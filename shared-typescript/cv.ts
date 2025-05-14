@@ -1,5 +1,5 @@
 export function isRecentCv(
-	dateModifiedOrCv: string | Cv | null | undefined,
+	dateModifiedOrCv: string | Cv | null | undefined
 ): boolean {
 	let dateModified: string | undefined
 	if (typeof dateModifiedOrCv === "string") {
@@ -80,12 +80,18 @@ export interface WorkExperience {
 	weeklyHoursWorked?: number
 }
 
+export enum WorkingHoursKind {
+	Unknown = 0,
+	Fixed = 1,
+	Course = 2,
+}
+
 export interface Preferences {
 	maxDistanceInKm?: number
 	maximalHours?: number
 	minimalHours?: number
 	postcode?: string
-	workingHours?: number
+	workingHours?: WorkingHoursKind
 }
 
 export interface PersonalDetails {
