@@ -16,3 +16,19 @@ This repo describes how a scraper should work and gives helper libaries for buil
 This makes it a lot easier to use this as a library in other project.
 
 But keep that also in mind when adding new features
+
+## Getting started:
+
+### Bun
+
+```sh
+cp bun.tsconfig.json tsconfig.json
+bun install
+```
+
+### Deno
+
+```sh
+cp deno.tsconfig.json tsconfig.json
+deno cache mod.ts
+```
