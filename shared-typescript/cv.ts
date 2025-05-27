@@ -41,6 +41,7 @@ export interface Cv {
 	type?: CVTypes
 	unsupportedCVFields?: UnsupportedCVFields
 	vacancyInfo?: VacancyInfo
+	cached?: boolean
 }
 
 export interface UnsupportedCVFields {
