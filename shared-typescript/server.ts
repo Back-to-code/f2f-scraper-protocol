@@ -312,7 +312,8 @@ export class AbstractServer {
 	public async getUsers(
 		mustBeAtLeastOneUser: boolean,
 	): Promise<Array<LoginUser>> {
-		const { users } = await this.fetchWithRetry("/api/v1/scraperUsers")
+		const response = await this.fetchWithRetry("/api/v1/scraperUsers")
+		const { users } = response as any
 
 		if (users.length == 0 && mustBeAtLeastOneUser) {
 			throw "No login users found"
@@ -452,12 +453,15 @@ export class AbstractServer {
 	async cvHasMatches(cv: Cv): Promise<boolean> {
 		this.validateCv(cv)
 
-		const resp = await this.fetchWithRetry("/api/v1/scraper/dryScanCV", {
-			body: { cv },
-			method: "POST",
-		})
+		const response = await this.fetchWithRetry(
+			"/api/v1/scraper/dryScanCV",
+			{
+				body: { cv },
+				method: "POST",
+			},
+		)
 
-		return resp.hasMatches
+		return (response as any).hasMatches
 	}
 
 	// Send a scraped CV to RT-CV

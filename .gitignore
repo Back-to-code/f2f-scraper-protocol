@@ -62,3 +62,4 @@ examples*
 .npm
 package-lock.json
 yarn.lock
+tsconfig.json

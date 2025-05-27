@@ -7,11 +7,11 @@ definitions:
       - go build
   denoStep: &deno
     name: Check Deno lib
-    image: denoland/deno:1.34.2
+    image: denoland/deno:2.3
     script:
-      - deno test deno -A
+      - deno test deno --config ./deno.tsconfig.json -A
       - cd examples
-      - deno check main.ts
+      - deno check --config ../deno.tsconfig.json main.ts
   bunStep: &bun
     name: Check Bun lib
     image: oven/bun:1

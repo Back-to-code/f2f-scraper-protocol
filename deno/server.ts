@@ -21,40 +21,30 @@ class DenoLangSpecifics implements LangSpecifics {
 	getEnv(k: string): string | undefined {
 		return Deno.env.get(k)
 	}
-	async httpServer(
+	httpServer(
 		port: number,
 		handler: (request: Request) => PotentialPromise<Response>
 	): Promise<void> {
-		const s = Deno.listen({ port })
-		for await (const conn of s) {
-			this.handleConn(conn, handler)
-		}
-	}
-	async handleConn(
-		conn: Deno.Conn,
-		handler: (request: Request) => PotentialPromise<Response>
-	) {
-		const httpConn = Deno.serveHttp(conn)
-		for await (const requestEvent of httpConn) {
-			let response: Response
-			try {
-				response = await handler(requestEvent.request)
-			} catch (e) {
-				console.error(e)
-				response = Response.json(
-					{ error: "Internal Server Error" },
-					{
-						status: 500,
-					}
-				)
+		Deno.serve(
+			{
+				port,
+			},
+			async (request) => {
+				try {
+					const response = await handler(request)
+					return response
+				} catch (e) {
+					console.error(e)
+					return Response.json(
+						{ error: "Internal Server Error" },
+						{
+							status: 500,
+						}
+					)
+				}
 			}
-
-			try {
-				await requestEvent.respondWith(response)
-			} catch (e) {
-				console.error("failed to respond", e)
-			}
-		}
+		)
+		return new Promise(() => {})
 	}
 	statsServer(prefix: string, port: number): AbstractStats {
 		const metrics = create()
