@@ -7,7 +7,7 @@ definitions:
       - go build
   denoStep: &deno
     name: Check Deno lib
-    image: denoland/deno:2.3
+    image: denoland/deno:2.3.3
     script:
       - deno test deno --config ./deno.tsconfig.json -A
       - cd examples
