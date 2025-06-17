@@ -42,6 +42,7 @@ export interface Cv {
 	unsupportedCVFields?: UnsupportedCVFields
 	vacancyInfo?: VacancyInfo
 	cached?: boolean
+	partial?: boolean
 }
 
 export interface UnsupportedCVFields {
