@@ -6,12 +6,12 @@ export type PotentialPromise<T> = T | Promise<T>
 
 export type CustomHandlerCallback = (
 	server: AbstractServer,
-	request: Request
+	request: Request,
 ) => PotentialPromise<Response>
 
 type ApiHandler = (
 	server: AbstractServer,
-	request: Request
+	request: Request,
 ) => PotentialPromise<Response>
 type ApiHandlers = Record<string, ApiHandler>
 
@@ -24,11 +24,11 @@ export interface CustomHandler {
 export interface Handlers {
 	cv?: (
 		server: AbstractServer,
-		referenceNr: string
+		referenceNr: string,
 	) => PotentialPromise<{ cv: Cv; hasDocument?: boolean }>
 	cvDocument?: (
 		server: AbstractServer,
-		referenceNr: string
+		referenceNr: string,
 	) => PotentialPromise<{
 		data: Uint8Array
 		filename?: string
@@ -37,12 +37,17 @@ export interface Handlers {
 	checkCredentials?: (
 		server: AbstractServer,
 		username: string,
-		password: string
+		password: string,
 	) => PotentialPromise<boolean>
 	checkSiteStorageCredentials?: (
 		server: AbstractServer,
-		credentials: SiteStorageCredentialsValue
+		credentials: SiteStorageCredentialsValue,
 	) => PotentialPromise<boolean>
+	health?: (server: AbstractServer) => PotentialPromise<{
+		status: string | number
+		lastCv: string | Date
+		comment?: string
+	}>
 }
 
 const notImplementedResponse = () =>
@@ -53,20 +58,39 @@ const notImplementedResponse = () =>
 			headers: {
 				"X-Not-Implemented": "true",
 			},
-		}
+		},
 	)
 
 export function resolveApiHandler(
 	handlers: Handlers,
 	method: string,
-	path: string
+	path: string,
 ): ApiHandler | undefined {
 	return apiHandlers(handlers)[`${method} ${path}`]
 }
 
 function apiHandlers(handlers: Handlers): ApiHandlers {
 	return {
-		"GET /health": () => Response.json({ status: "ok" }, { status: 200 }),
+		"GET /health": async (server) => {
+			if (!handlers.health) {
+				return notImplementedResponse()
+			}
+
+			// some auth / validation / whatever?
+
+			try {
+				const jaweja = await handlers.health(server)
+
+				return Response.json({ jaweja })
+			} catch (e) {
+				console.log("Failed to check scraper health, error:")
+				console.log(e)
+				return Response.json(
+					{ error: "Failed to check scraper health" },
+					{ status: 500 },
+				)
+			}
+		},
 		"POST /cv": async (server, request) => {
 			if (!handlers.cv) {
 				return notImplementedResponse()
@@ -85,7 +109,7 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 				console.log("Failed to fetch cv, error: ", e)
 				return Response.json(
 					{ error: "Failed to fetch cv by reference number" },
-					{ status: 500 }
+					{ status: 500 },
 				)
 			}
 		},
@@ -103,14 +127,14 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 			try {
 				const cvDocument = await handlers.cvDocument(
 					server,
-					referenNrOrError
+					referenNrOrError,
 				)
 
 				const headers: Record<string, string> = {}
 
 				headers["Filename"] = formatCvFilename(
 					cvDocument.filename,
-					cvDocument.mimeType
+					cvDocument.mimeType,
 				)
 				if (cvDocument.mimeType) {
 					headers["Content-Type"] = cvDocument.mimeType
@@ -123,7 +147,7 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 					{
 						error: "Failed to fetch cv document by reference number",
 					},
-					{ status: 500 }
+					{ status: 500 },
 				)
 			}
 		},
@@ -137,7 +161,7 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 			const bodyError = () =>
 				Response.json(
 					{ error: "Expected a body with a username and password" },
-					{ status: 400 }
+					{ status: 400 },
 				)
 
 			if (typeof body !== "object" || body === null) {
@@ -154,14 +178,14 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 				const valid = await handlers.checkCredentials(
 					server,
 					body.username,
-					body.password
+					body.password,
 				)
 				return Response.json({ valid })
 			} catch (e) {
 				console.log("Failed to check credentials, error: ", e)
 				return Response.json(
 					{ error: "Failed to check credentials" },
-					{ status: 500 }
+					{ status: 500 },
 				)
 			}
 		},
@@ -172,18 +196,18 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 
 			let body
 			try {
-				body = await request.json()
+				body = (await request.json()) as SiteStorageCredentialsValue
 			} catch (e) {
 				return Response.json(
 					{ error: `Failed to parse body, error: ${e}` },
-					{ status: 400 }
+					{ status: 400 },
 				)
 			}
 
 			const bodyError = (error: string) =>
 				Response.json(
 					{ error: `Failed to parse body, error: ${error}` },
-					{ status: 400 }
+					{ status: 400 },
 				)
 
 			if (typeof body !== "object" || body === null) {
@@ -200,24 +224,24 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 				}
 
 				for (const [cookieName, cookieValue] of Object.entries(
-					body.cookies
+					body.cookies,
 				)) {
 					if (!Array.isArray(cookieValue)) {
 						return bodyError(
-							"body.cookies[cookieName] is not an array"
+							"body.cookies[cookieName] is not an array",
 						)
 					}
 					for (const value of cookieValue) {
 						if (typeof value !== "string") {
 							return bodyError(
-								"body.cookies[cookieName] contains a non-string value"
+								"body.cookies[cookieName] contains a non-string value",
 							)
 						}
 					}
 
 					if (typeof cookieName !== "string") {
 						return bodyError(
-							"body.cookies contains a non-string key"
+							"body.cookies contains a non-string key",
 						)
 					}
 				}
@@ -226,7 +250,7 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 			try {
 				const valid = await handlers.checkSiteStorageCredentials(
 					server,
-					body
+					body,
 				)
 				return Response.json({ valid })
 			} catch (e) {
@@ -234,7 +258,7 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 				console.log(e)
 				return Response.json(
 					{ error: "Failed to check credentials" },
-					{ status: 500 }
+					{ status: 500 },
 				)
 			}
 		},
@@ -246,20 +270,20 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 export function resolveExternalHandler(
 	handlers: Map<string, CustomHandlerCallback>,
 	method: string,
-	path: string
+	path: string,
 ): ApiHandler | undefined {
 	return handlers.get(`${method} ${path}`)
 }
 
 async function referenceNrFromBody(
-	request: Request
+	request: Request,
 ): Promise<string | Response> {
 	const body = await request.json()
 
 	const bodyError = () =>
 		Response.json(
 			{ error: "Expected a body with a referenceNr" },
-			{ status: 400 }
+			{ status: 400 },
 		)
 
 	if (typeof body !== "object" || body === null) {
@@ -270,10 +294,12 @@ async function referenceNrFromBody(
 		return bodyError()
 	}
 
-	if (typeof body.referenceNr !== "number") {
-		body.referenceNr = body.referenceNr.toString()
-	} else if (typeof body.referenceNr !== "string") {
-		return bodyError()
+	if (typeof body.referenceNr !== "string") {
+		if (typeof body.referenceNr === "number") {
+			return body.referenceNr.toString()
+		} else {
+			return bodyError()
+		}
 	}
 
 	return body.referenceNr
