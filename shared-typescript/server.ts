@@ -548,7 +548,10 @@ export class AbstractServer {
 		//   2. If the primary server fails to scan the cv document the alternative server will also very likely fail.
 		if (this.alternativeServer) {
 			await this.alternativeServer
-				?.sendCvDocument(metadata, cvFile)
+				.fetch("/api/v1/scraper/scanCVDocument", {
+					body,
+					method: "POST",
+				})
 				.catch((e) => {
 					console.log(
 						"failed to send cv document to alternative server,",
