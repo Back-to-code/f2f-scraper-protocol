@@ -120,6 +120,8 @@ export class AbstractServer {
 	private alternativeServer?: AbstractServer
 	private externalHandlers: Map<string, CustomHandlerCallback> = new Map()
 
+	private lastSentCv!: string
+
 	constructor(
 		private common: LangSpecifics,
 		public readonly slug: string,
@@ -477,6 +479,8 @@ export class AbstractServer {
 				body: { cv },
 				method: "POST",
 			})
+
+			this.lastSentCv = new Date().toISOString()
 		} catch (e) {
 			if (cv.personalDetails && e instanceof FetchError) {
 				let alteredCv = false

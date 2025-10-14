@@ -43,11 +43,7 @@ export interface Handlers {
 		server: AbstractServer,
 		credentials: SiteStorageCredentialsValue,
 	) => PotentialPromise<boolean>
-	health?: (server: AbstractServer) => PotentialPromise<{
-		status: string | number
-		lastCv: string | Date
-		comment?: string
-	}>
+	health?: (_: AbstractServer) => PotentialPromise<string[] | undefined>
 }
 
 const notImplementedResponse = () =>
@@ -73,15 +69,15 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 	return {
 		"GET /health": async (server) => {
 			if (!handlers.health) {
-				return notImplementedResponse()
+				return Response.json({ status: 200 })
 			}
 
 			// some auth / validation / whatever?
 
 			try {
-				const jaweja = await handlers.health(server)
+				const resp = await handlers.health(server)
 
-				return Response.json({ jaweja })
+				return Response.json({ resp })
 			} catch (e) {
 				console.log("Failed to check scraper health, error:")
 				console.log(e)
