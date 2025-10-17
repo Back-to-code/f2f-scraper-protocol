@@ -601,6 +601,10 @@ export class AbstractServer {
 		return this.fetch("/api/v1/visitedCvs/byReference/" + referenceNr)
 	}
 
+	public getLastSentCv() {
+		return this.lastSentCv
+	}
+
 	// ---
 	// Private methods
 	// ---

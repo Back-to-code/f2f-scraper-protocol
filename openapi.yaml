@@ -1,15 +1,15 @@
 openapi: 3.0.0
 info:
-  version: 1.0.0
+  version: 1.1.0
   title: A Scraper
   description: |
-    This defines how a scraper should behave
+    This defines how a scraper should behave.
 
     ## Auth
 
     The basic auth authentication username and password can be obtained via RT-CV.
     Within RT-CV select the scraper you want the credentials of and copy the `Key ID` and the `Key` itself.
-    Now you can use the `Key ID` as username and `key` as password
+    Now you can use the `Key ID` as username and `Key` as password
 
     Most server side HTTP clients allow basic auth credentials within the url so making requests to a scraper is as easy as:
     ```sh
@@ -30,12 +30,31 @@ paths:
       description: Used by other services to check if a scraper is alive
       responses:
         200:
-          description: server is alive
+          description: If the response array is empty or undefined there are no errors
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                properties:
+                  status:
+                    description: If true, scraper is functioning. If false, scraper has errors.
+                    type: boolean
+                  # Maybe we should keep this in RT-CV
+                  # lastSentCv:
+                  #   description: ISO timestamp of when last cv was sent to RTCV.
+                  #   type: string
+                  errors:
+                    description: List of errors if status is false.
+                    type: array
+                    items:
+                      type: string
         401:
           $ref: "#/components/responses/UnauthorizedError"
   /cv:
     post:
-      description: Get a single CV by it's reference number
+      description: Get a single CV by its reference number
       requestBody:
         required: true
         content:
@@ -59,7 +78,7 @@ paths:
                   - cv
                 properties:
                   cv:
-                    description: Contians the cv in the, the format of the cv is described by the RT-CV server https://bitbucket.org/teamscript/rt-cv/src/main/models/cv.go#lines-18
+                    description: Contains the cv in the, the format of the cv is described by the RT-CV server https://bitbucket.org/teamscript/rt-cv/src/main/models/cv.go#lines-18
                     type: object
                   hasDocument:
                     description: Indicates if this cv has a cv document attached and the cv mata mostly likely is minimal
@@ -74,8 +93,7 @@ paths:
           $ref: "#/components/responses/InternalServerError"
   /cv-document:
     post:
-      description:
-        Get a CV Document by it's reference number,
+      description: Get a CV Document by its reference number,
         you can check if a cv has a document by using the /cv endpoint
       requestBody:
         required: true
@@ -91,8 +109,7 @@ paths:
                   minLength: 1
       responses:
         200:
-          description:
-            The CV document
+          description: The CV document
           headers:
             Content-Type:
               description: The document mimetype of the cv document

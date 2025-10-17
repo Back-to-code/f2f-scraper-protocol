@@ -43,7 +43,13 @@ export interface Handlers {
 		server: AbstractServer,
 		credentials: SiteStorageCredentialsValue,
 	) => PotentialPromise<boolean>
-	health?: (_: AbstractServer) => PotentialPromise<string[] | undefined>
+	health?: (server: AbstractServer) => PotentialPromise<string[] | undefined>
+}
+
+interface HealthResponse {
+	status: boolean
+	lastSentCv?: string // ISO datetime
+	errors?: string[] | undefined
 }
 
 const notImplementedResponse = () =>
@@ -68,23 +74,33 @@ export function resolveApiHandler(
 function apiHandlers(handlers: Handlers): ApiHandlers {
 	return {
 		"GET /health": async (server) => {
-			if (!handlers.health) {
-				return Response.json({ status: 200 })
+			const healthResp: HealthResponse = {
+				status: true,
 			}
 
-			// some auth / validation / whatever?
+			if (!handlers.health) {
+				return Response.json(healthResp)
+			}
 
 			try {
-				const resp = await handlers.health(server)
+				const scraperErrors = await handlers.health(server)
 
-				return Response.json({ resp })
+				if (scraperErrors && scraperErrors.length > 0) {
+					healthResp.status = false
+					healthResp.errors = scraperErrors
+				}
+
+				healthResp.lastSentCv = server.getLastSentCv()
+
+				return Response.json(healthResp)
 			} catch (e) {
 				console.log("Failed to check scraper health, error:")
 				console.log(e)
-				return Response.json(
-					{ error: "Failed to check scraper health" },
-					{ status: 500 },
-				)
+
+				healthResp.status = false
+				healthResp.errors = [e as string]
+
+				return Response.json(healthResp)
 			}
 		},
 		"POST /cv": async (server, request) => {
