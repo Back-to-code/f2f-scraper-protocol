@@ -9,6 +9,7 @@ import {
 import { type Cv } from "./cv.ts"
 import { AbstractStats } from "./stats.ts"
 import { formatCvFilename } from "./cv_document.ts"
+import { Slack } from "./slack.ts"
 
 export interface ServerOptions {
 	// Required (If not set by env variables):
@@ -119,6 +120,8 @@ export class AbstractServer {
 	private alternativeServerAuth?: ServerAuth
 	private alternativeServer?: AbstractServer
 	private externalHandlers: Map<string, CustomHandlerCallback> = new Map()
+	private internalSlackCache?: Slack
+	private externalSlackCache?: Slack
 
 	public lastSentCv: string | null = null
 
@@ -449,7 +452,7 @@ export class AbstractServer {
 	// This can be used for example if scraping a partial cv is easy but a full cv is complicated
 	// In those cases you can first check if the cv has matches with partial data and if it does you scrape the full cv
 	//
-	// Currently this is used by the linkedin scraper to firstly check if the directly visable profile matches something.
+	// Currently this is used by the linkedin scraper to firstly check if the directly visible profile matches something.
 	// If so we also scrape all the information hidden behind models
 	async cvHasMatches(cv: Cv): Promise<boolean> {
 		this.validateCv(cv)
@@ -612,6 +615,22 @@ export class AbstractServer {
 		return this.fetch("/api/v1/visitedCvs/byReference/" + referenceNr)
 	}
 
+	// Send a message to the error channel within the Script / Backtocode slack.
+	// Only visible for us developers.. hence internal.
+	public get internalSlack(): Slack {
+		if (!this.internalSlackCache)
+			this.internalSlackCache = new Slack(true, this)
+		return this.internalSlackCache
+	}
+
+	// Send a message to the error channel within the First2find slack.
+	// Mainly viewed by Sander.. hence external.
+	public get externalSlack(): Slack {
+		if (!this.externalSlackCache)
+			this.externalSlackCache = new Slack(false, this)
+		return this.externalSlackCache
+	}
+
 	// ---
 	// Private methods
 	// ---
@@ -619,6 +638,7 @@ export class AbstractServer {
 	private get authorizationHeader() {
 		return `Basic ${this.primaryServerAuth.username}:${this.primaryServerAuth.password}`
 	}
+
 
 	private outerHandleRequest(request: Request): PotentialPromise<Response> {
 		// NOTE: Try not to mark this function as async..
