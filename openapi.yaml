@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  version: 1.1.0
+  version: 1.0.0
   title: A Scraper
   description: |
     This defines how a scraper should behave.
@@ -30,21 +30,42 @@ paths:
       description: Used by other services to check if a scraper is alive
       responses:
         200:
-          description: If the response array is empty or undefined there are no errors
+          description: The scraper is functioning as expected.
           content:
             application/json:
               schema:
                 type: object
                 required:
                   - status
+                  - lastSendCv
                 properties:
                   status:
-                    description: If true, scraper is functioning. If false, scraper has errors.
                     type: boolean
-                  # Maybe we should keep this in RT-CV
-                  # lastSentCv:
-                  #   description: ISO timestamp of when last cv was sent to RTCV.
-                  #   type: string
+                    const: true
+                  lastSentCv:
+                    description: iso timestamp with time of last send cv if it has been send
+                    type: string
+                    format: date-time
+                    nullable: true
+        500:
+          description: The scraper is malfunctioning, see the returned errors for more information
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - lastSendCv
+                  - errors
+                properties:
+                  status:
+                    type: boolean
+                    const: false
+                  lastSentCv:
+                    description: iso timestamp with time of last send cv if it has been send
+                    type: string
+                    format: date-time
+                    nullable: true
                   errors:
                     description: List of errors if status is false.
                     type: array

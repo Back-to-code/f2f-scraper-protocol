@@ -46,10 +46,22 @@ export interface Handlers {
 	health?: (server: AbstractServer) => PotentialPromise<string[] | undefined>
 }
 
-interface HealthResponse {
-	status: boolean
-	lastSentCv?: string // ISO datetime
-	errors?: string[] | undefined
+interface BaseHealthResponse {
+	// iso timestamp with time of last send cv if it has been send
+	lastSentCv: string | null
+}
+
+interface HealthyResponse extends BaseHealthResponse {
+	// Indicates if everything is oke, true = http status 200, false = http status 500
+	status: true
+}
+
+interface UnhealthyResponse extends BaseHealthResponse {
+	// Indicates if everything is oke, true = http status 200, false = http status 500
+	status: false
+
+	// A list of errors that might be reported by a scraper
+	errors: string[]
 }
 
 const notImplementedResponse = () =>
@@ -74,34 +86,38 @@ export function resolveApiHandler(
 function apiHandlers(handlers: Handlers): ApiHandlers {
 	return {
 		"GET /health": async (server) => {
-			const healthResp: HealthResponse = {
-				status: true,
+			if (!handlers.health) {
+				return Response.json({
+					status: true,
+					lastSentCv: server.lastSentCv,
+				} satisfies HealthyResponse)
 			}
 
-			if (!handlers.health) {
-				return Response.json(healthResp)
+			const errorResponse: UnhealthyResponse = {
+				status: false,
+				lastSentCv: server.lastSentCv,
+				errors: [],
 			}
 
 			try {
 				const scraperErrors = await handlers.health(server)
 
-				if (scraperErrors && scraperErrors.length > 0) {
-					healthResp.status = false
-					healthResp.errors = scraperErrors
+				if (!scraperErrors || scraperErrors.length === 0) {
+					return Response.json({
+						status: true,
+						lastSentCv: server.lastSentCv,
+					} satisfies HealthyResponse)
 				}
 
-				healthResp.lastSentCv = server.getLastSentCv()
-
-				return Response.json(healthResp)
+				errorResponse.errors = scraperErrors
 			} catch (e) {
 				console.log("Failed to check scraper health, error:")
 				console.log(e)
 
-				healthResp.status = false
-				healthResp.errors = [e as string]
-
-				return Response.json(healthResp)
+				errorResponse.errors = [e as string]
 			}
+
+			return Response.json(errorResponse, { status: 500 })
 		},
 		"POST /cv": async (server, request) => {
 			if (!handlers.cv) {
