@@ -120,6 +120,8 @@ export class AbstractServer {
 	private alternativeServer?: AbstractServer
 	private externalHandlers: Map<string, CustomHandlerCallback> = new Map()
 
+	public lastSentCv: string | null = null
+
 	constructor(
 		private common: LangSpecifics,
 		public readonly slug: string,
@@ -300,7 +302,7 @@ export class AbstractServer {
 			throw new FetchError(await r.text(), path, r.status)
 		}
 
-		return r.json()
+		return r.json() as Promise<T>
 	}
 
 	// health checks if the api server is up and running and if not throws an error
@@ -359,8 +361,7 @@ export class AbstractServer {
 			)
 		} catch (e) {
 			console.warn(
-				`failed to report login ${
-					success ? "success" : "failure"
+				`failed to report login ${success ? "success" : "failure"
 				} for user "${username}", error:`,
 				e,
 			)
@@ -477,6 +478,8 @@ export class AbstractServer {
 				body: { cv },
 				method: "POST",
 			})
+
+			this.lastSentCv = new Date().toISOString()
 		} catch (e) {
 			if (cv.personalDetails && e instanceof FetchError) {
 				let alteredCv = false
@@ -540,6 +543,8 @@ export class AbstractServer {
 			body,
 			method: "POST",
 		})
+
+		this.lastSentCv = new Date().toISOString()
 
 		// Only send the cv document to the alternative server once the primary server has successfully received it
 		// We do this for 2 reasons:
@@ -642,11 +647,11 @@ export class AbstractServer {
 
 		if (response instanceof Promise) {
 			return response.then((response) =>
-				this.addCorsHeaderAndLog(response, request, url),
+				this.addCorsHeaderAndLog(response, request, url as URL),
 			)
 		}
 
-		return this.addCorsHeaderAndLog(response, request, url)
+		return this.addCorsHeaderAndLog(response, request, url as URL)
 	}
 
 	private addCorsHeaderAndLog(
@@ -780,7 +785,7 @@ export class AbstractServer {
 function shuffle<T>(array: T[]) {
 	for (let i = array.length - 1; i > 0; i--) {
 		const j = Math.floor(Math.random() * (i + 1))
-		;[array[i], array[j]] = [array[j], array[i]]
+			;[array[i], array[j]] = [array[j], array[i]]
 	}
 
 	return array
