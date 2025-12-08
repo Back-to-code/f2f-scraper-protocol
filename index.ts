@@ -1,13 +1,10 @@
-// This file belongs to the Bun codebase!
-
 export type {
 	Handlers,
 	PotentialPromise,
-} from "./shared-typescript/handlers.ts"
-export type * from "./shared-typescript/cv.ts"
-export * from "./shared-typescript/cv.ts"
-export { FetchError } from "./shared-typescript/server.ts"
-export type * from "./shared-typescript/server.ts"
-export { CvCache } from "./shared-typescript/cache.ts"
-export * from "./shared-typescript/stats.ts"
-export { Server } from "./bun/server.ts"
+} from "./lib/handlers.ts"
+export type * from "./lib/cv.ts"
+export * from "./lib/cv.ts"
+export type * from "./lib/server.ts"
+export { FetchError, Server } from "./lib/server.ts"
+export { CvCache } from "./lib/cache.ts"
+export * from "./lib/stats.ts"

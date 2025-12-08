@@ -1,4 +1,4 @@
-# modules 
+# modules
 node_modules
 
 # Logs
@@ -10,7 +10,7 @@ yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
 
-# Caches 
+# Caches
 .cache
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
@@ -62,4 +62,3 @@ examples*
 .npm
 package-lock.json
 yarn.lock
-tsconfig.json

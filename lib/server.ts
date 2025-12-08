@@ -7,9 +7,10 @@ import {
 	resolveExternalHandler,
 } from "./handlers.ts"
 import { type Cv } from "./cv.ts"
-import { AbstractStats } from "./stats.ts"
+import { Stats } from "./stats.ts"
 import { formatCvFilename } from "./cv_document.ts"
 import { Slack } from "./slack.ts"
+import { Registry } from "prom-client"
 
 export interface ServerOptions {
 	// Required (If not set by env variables):
@@ -95,30 +96,13 @@ export class FetchError {
 	}
 }
 
-export interface LangSpecifics {
-	// Exit with code 1
-	exit1(): never
-
-	// get a environment variable
-	getEnv(k: string): string | undefined
-
-	// Create a http server that listens for incoming connections and calls the handler function for each request
-	httpServer(
-		port: number,
-		handler: (request: Request) => PotentialPromise<Response>,
-	): Promise<void>
-
-	// Create stats server
-	statsServer(prefix: string, port: number): AbstractStats
-}
-
-export class AbstractServer {
+export class Server {
 	private port: number
 	private apiServer: string
 	private apiKeyId: string
 	private primaryServerAuth: ServerAuth
 	private alternativeServerAuth?: ServerAuth
-	private alternativeServer?: AbstractServer
+	private alternativeServer?: Server
 	private externalHandlers: Map<string, CustomHandlerCallback> = new Map()
 	private internalSlackCache?: Slack
 	private externalSlackCache?: Slack
@@ -126,7 +110,6 @@ export class AbstractServer {
 	public lastSentCv: string | null = null
 
 	constructor(
-		private common: LangSpecifics,
 		public readonly slug: string,
 		private handlers: Handlers,
 		options: ServerOptions,
@@ -147,14 +130,14 @@ export class AbstractServer {
 			console.log(
 				"RTCV_SERVER url must contain api credentials like: https://key_id:key@example.com",
 			)
-			this.common.exit1()
+			process.exit(1)
 		}
 
 		if (slug === "" && !options.skipSlugCheck) {
 			console.log(
 				"Error: slug is required for the scraper to be identifiable! If you are sure that you want to run the scraper without a slug, use the skipSlugCheck option in options.",
 			)
-			this.common.exit1()
+			process.exit(1)
 		}
 
 		this.apiKeyId = apiServer.username
@@ -168,7 +151,7 @@ export class AbstractServer {
 		if (!options.noHealthChecks) {
 			this.health().catch((e) => {
 				console.log(`Failed to ping RT-CV (${apiServer}), error:`, e)
-				this.common.exit1()
+				process.exit(1)
 			})
 		}
 
@@ -179,7 +162,7 @@ export class AbstractServer {
 				this.addCustomHandler(options.customHandlers)
 			} catch (e) {
 				console.log("Failed to add external handlers, error:", e)
-				this.common.exit1()
+				process.exit(1)
 			}
 		}
 
@@ -200,8 +183,7 @@ export class AbstractServer {
 					}
 				}
 
-				this.alternativeServer = new AbstractServer(
-					this.common,
+				this.alternativeServer = new Server(
 					slug,
 					{},
 					{
@@ -218,9 +200,29 @@ export class AbstractServer {
 	// Public methods
 	// ---
 
-	public startStatsServer(port = 9091): AbstractStats {
+	public startStatsServer(port = 9091): Stats {
 		const prefix = this.slug.replace("-", "_") + "_"
-		return this.common.statsServer(prefix, port)
+
+		const register = new Registry()
+		const stats = new Stats(prefix, register)
+
+		Bun.serve({
+			port,
+			async fetch(request) {
+				const parsedUrl = new URL(request.url)
+
+				if (parsedUrl.pathname !== "/metrics") {
+					return new Response("Not found", { status: 404 })
+				}
+
+				const metrics = await register.metrics()
+				return new Response(metrics)
+			},
+		})
+
+		console.log(`Serving stats on localhost:${port}/metrics`)
+
+		return stats
 	}
 
 	public async fetchWithRetry<T = unknown>(
@@ -570,12 +572,12 @@ export class AbstractServer {
 	}
 
 	// startServer starts the server and listens for incoming connections
-	public async startServer() {
+	public startServer() {
 		console.log(`Listening on http://localhost:${this.port}/`)
-		await this.common.httpServer(
-			this.port,
-			this.outerHandleRequest.bind(this),
-		)
+		Bun.serve({
+			port: this.port,
+			fetch: (request: Request) => this.outerHandleRequest(request),
+		})
 	}
 
 	/**
@@ -790,7 +792,7 @@ export class AbstractServer {
 	}
 
 	private mightGetEnv(k: string): string {
-		return this.common.getEnv(k) || ""
+		return process.env[k] || ''
 	}
 
 	private mustGetEnv(k: string): string {
