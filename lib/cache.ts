@@ -1,5 +1,6 @@
-import { type Cv } from "./cv.ts"
-import { type AbstractStats, type AbstractGauge } from "./stats.ts"
+import type { Gauge } from "prom-client"
+import type { Cv } from "./cv.ts"
+import type { Stats } from "./stats.ts"
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -11,13 +12,13 @@ interface CvWithTime {
 export class CvCache {
 	private cvs: Map<string, CvWithTime> = new Map()
 	private startedCleanupLoop = false
-	private statsGauge?: AbstractGauge
+	private statsGauge?: Gauge
 
-	constructor(stats?: AbstractStats) {
+	constructor(stats?: Stats) {
 		this.statsGauge = stats?.gauge("csv_cache_size")
 	}
 
-	set stats(stats: AbstractStats | undefined) {
+	set stats(stats: Stats | undefined) {
 		this.statsGauge = stats?.gauge("csv_cache_size")
 	}
 

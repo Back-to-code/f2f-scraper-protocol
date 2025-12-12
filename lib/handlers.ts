@@ -1,16 +1,16 @@
 import { Cv } from "./cv.ts"
 import { formatCvFilename } from "./cv_document.ts"
-import { AbstractServer, SiteStorageCredentialsValue } from "./server.ts"
+import { Server, SiteStorageCredentialsValue } from "./server.ts"
 
 export type PotentialPromise<T> = T | Promise<T>
 
 export type CustomHandlerCallback = (
-	server: AbstractServer,
+	server: Server,
 	request: Request,
 ) => PotentialPromise<Response>
 
 type ApiHandler = (
-	server: AbstractServer,
+	server: Server,
 	request: Request,
 ) => PotentialPromise<Response>
 type ApiHandlers = Record<string, ApiHandler>
@@ -23,11 +23,11 @@ export interface CustomHandler {
 
 export interface Handlers {
 	cv?: (
-		server: AbstractServer,
+		server: Server,
 		referenceNr: string,
 	) => PotentialPromise<{ cv: Cv; hasDocument?: boolean }>
 	cvDocument?: (
-		server: AbstractServer,
+		server: Server,
 		referenceNr: string,
 	) => PotentialPromise<{
 		data: Uint8Array
@@ -35,15 +35,15 @@ export interface Handlers {
 		mimeType?: string
 	}>
 	checkCredentials?: (
-		server: AbstractServer,
+		server: Server,
 		username: string,
 		password: string,
 	) => PotentialPromise<boolean>
 	checkSiteStorageCredentials?: (
-		server: AbstractServer,
+		server: Server,
 		credentials: SiteStorageCredentialsValue,
 	) => PotentialPromise<boolean>
-	health?: (server: AbstractServer) => PotentialPromise<string[] | undefined>
+	health?: (server: Server) => PotentialPromise<string[] | undefined>
 }
 
 interface BaseHealthResponse {
@@ -153,10 +153,7 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 			}
 
 			try {
-				const cvDocument = await handlers.cvDocument(
-					server,
-					referenNrOrError,
-				)
+				const cvDocument = await handlers.cvDocument(server, referenNrOrError)
 
 				const headers: Record<string, string> = {}
 
@@ -251,13 +248,9 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 					return bodyError("body.cookies is empty")
 				}
 
-				for (const [cookieName, cookieValue] of Object.entries(
-					body.cookies,
-				)) {
+				for (const [cookieName, cookieValue] of Object.entries(body.cookies)) {
 					if (!Array.isArray(cookieValue)) {
-						return bodyError(
-							"body.cookies[cookieName] is not an array",
-						)
+						return bodyError("body.cookies[cookieName] is not an array")
 					}
 					for (const value of cookieValue) {
 						if (typeof value !== "string") {
@@ -268,18 +261,13 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 					}
 
 					if (typeof cookieName !== "string") {
-						return bodyError(
-							"body.cookies contains a non-string key",
-						)
+						return bodyError("body.cookies contains a non-string key")
 					}
 				}
 			}
 
 			try {
-				const valid = await handlers.checkSiteStorageCredentials(
-					server,
-					body,
-				)
+				const valid = await handlers.checkSiteStorageCredentials(server, body)
 				return Response.json({ valid })
 			} catch (e) {
 				console.log("Failed to check credentials, error:")
