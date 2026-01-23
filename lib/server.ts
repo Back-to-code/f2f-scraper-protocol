@@ -168,15 +168,11 @@ export class Server {
 
 		if (options.alternativeServer !== false) {
 			const alternativeServer =
-				options.alternativeServer ||
-				this.mightGetEnv("RTCV_ALTERNATIVE_SERVER")
+				options.alternativeServer || this.mightGetEnv("RTCV_ALTERNATIVE_SERVER")
 
 			if (alternativeServer) {
 				const alternativeServerUrl = new URL(alternativeServer)
-				if (
-					alternativeServerUrl.username &&
-					alternativeServerUrl.password
-				) {
+				if (alternativeServerUrl.username && alternativeServerUrl.password) {
 					this.alternativeServerAuth = {
 						username: alternativeServerUrl.username,
 						password: alternativeServerUrl.password,
@@ -354,27 +350,22 @@ export class Server {
 				: usernameOrUser.username
 
 		try {
-			await this.fetchWithRetry(
-				"/api/v1/scraperUsers/reportLoginAttempt",
-				{
-					method: "POST",
-					body: {
-						username,
-						success,
-					},
+			await this.fetchWithRetry("/api/v1/scraperUsers/reportLoginAttempt", {
+				method: "POST",
+				body: {
+					username,
+					success,
 				},
-			)
+			})
 		} catch (e) {
 			console.warn(
-				`failed to report login ${success ? "success" : "failure"
+				`failed to report login ${
+					success ? "success" : "failure"
 				} for user "${username}", error:`,
 				e,
 			)
 		}
-		await this.alternativeServer?.reportLoginAttempt(
-			usernameOrUser,
-			success,
-		)
+		await this.alternativeServer?.reportLoginAttempt(usernameOrUser, success)
 	}
 
 	// Gets all the site credentials for the api key
@@ -459,13 +450,10 @@ export class Server {
 	async cvHasMatches(cv: Cv): Promise<boolean> {
 		this.validateCv(cv)
 
-		const response = await this.fetchWithRetry(
-			"/api/v1/scraper/dryScanCV",
-			{
-				body: { cv },
-				method: "POST",
-			},
-		)
+		const response = await this.fetchWithRetry("/api/v1/scraper/dryScanCV", {
+			body: { cv },
+			method: "POST",
+		})
 
 		return (response as any).hasMatches
 	}
@@ -563,10 +551,7 @@ export class Server {
 					method: "POST",
 				})
 				.catch((e) => {
-					console.log(
-						"failed to send cv document to alternative server,",
-						e,
-					)
+					console.log("failed to send cv document to alternative server,", e)
 				})
 		}
 	}
@@ -595,9 +580,7 @@ export class Server {
 			const methodPathString = `${method} ${path}`
 
 			if (this.externalHandlers.has(methodPathString)) {
-				throw new Error(
-					`Handler already exists for ${methodPathString}`,
-				)
+				throw new Error(`Handler already exists for ${methodPathString}`)
 			}
 
 			this.externalHandlers.set(methodPathString, handlerFunc)
@@ -613,8 +596,19 @@ export class Server {
 		})
 	}
 
-	public cvVisit(referenceNr: string): Promise<VisitedCv> {
-		return this.fetch("/api/v1/visitedCvs/byReference/" + referenceNr)
+	public async cvVisit(referenceNr: string): Promise<VisitedCv | undefined> {
+		try {
+			return await this.fetch("/api/v1/visitedCvs/byReference/" + referenceNr)
+		} catch (e) {
+			if (
+				e instanceof FetchError &&
+				e.response.toLowerCase().includes("no documents in result")
+			) {
+				return undefined
+			}
+
+			throw e
+		}
 	}
 
 	// Send a message to the error channel within the Script / Backtocode slack.
@@ -641,7 +635,6 @@ export class Server {
 		return `Basic ${this.primaryServerAuth.username}:${this.primaryServerAuth.password}`
 	}
 
-
 	private outerHandleRequest(request: Request): PotentialPromise<Response> {
 		// NOTE: Try not to mark this function as async..
 		// Most javascript servers are way faster when they don't get promise responses
@@ -655,8 +648,7 @@ export class Server {
 				headers: {
 					Vary: "Origin, Access-Control-Request-Method, Access-Control-Request-Headers",
 					"Access-Control-Allow-Origin": "*",
-					"access-control-allow-methods":
-						"GET,POST,HEAD,PUT,DELETE,PATCH",
+					"access-control-allow-methods": "GET,POST,HEAD,PUT,DELETE,PATCH",
 					"Access-Control-Allow-Headers": "*",
 				},
 			})
@@ -700,9 +692,7 @@ export class Server {
 		return Response.json({ error }, { status: 401 })
 	}
 
-	private requestValidAuth(
-		authorization: string | null,
-	): Response | undefined {
+	private requestValidAuth(authorization: string | null): Response | undefined {
 		if (!authorization) return this.unauthorizedResponse()
 
 		try {
@@ -742,11 +732,7 @@ export class Server {
 		)
 		if (authError) return authError
 
-		let apiHandler = resolveApiHandler(
-			this.handlers,
-			request.method,
-			pathname,
-		)
+		let apiHandler = resolveApiHandler(this.handlers, request.method, pathname)
 
 		if (!apiHandler) {
 			apiHandler = resolveExternalHandler(
@@ -772,13 +758,10 @@ export class Server {
 			overwroteExisting: boolean
 		}
 		try {
-			slugResponse = await this.fetchWithRetry(
-				"/api/v1/scraper/setSlug",
-				{
-					method: "PUT",
-					body: { slug: this.slug },
-				},
-			)
+			slugResponse = await this.fetchWithRetry("/api/v1/scraper/setSlug", {
+				method: "PUT",
+				body: { slug: this.slug },
+			})
 		} catch (e) {
 			console.log("error setting slug,", e)
 			return
@@ -792,7 +775,7 @@ export class Server {
 	}
 
 	private mightGetEnv(k: string): string {
-		return process.env[k] || ''
+		return process.env[k] || ""
 	}
 
 	private mustGetEnv(k: string): string {
@@ -807,7 +790,7 @@ export class Server {
 function shuffle<T>(array: T[]) {
 	for (let i = array.length - 1; i > 0; i--) {
 		const j = Math.floor(Math.random() * (i + 1))
-			;[array[i], array[j]] = [array[j], array[i]]
+		;[array[i], array[j]] = [array[j], array[i]]
 	}
 
 	return array
