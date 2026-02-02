@@ -89,13 +89,13 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 			if (!handlers.health) {
 				return Response.json({
 					status: true,
-					lastSentCv: server.lastSentCv,
+					lastSentCv: server.lastSentCv?.toISOString() ?? null,
 				} satisfies HealthyResponse)
 			}
 
 			const errorResponse: UnhealthyResponse = {
 				status: false,
-				lastSentCv: server.lastSentCv,
+				lastSentCv: server.lastSentCv?.toISOString() ?? null,
 				errors: [],
 			}
 
@@ -105,7 +105,7 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 				if (!scraperErrors || scraperErrors.length === 0) {
 					return Response.json({
 						status: true,
-						lastSentCv: server.lastSentCv,
+						lastSentCv: server.lastSentCv?.toISOString() ?? null,
 					} satisfies HealthyResponse)
 				}
 

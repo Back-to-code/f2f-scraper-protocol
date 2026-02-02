@@ -11,6 +11,7 @@ import { Stats } from "./stats.ts"
 import { formatCvFilename } from "./cv_document.ts"
 import { Slack } from "./slack.ts"
 import { Registry } from "prom-client"
+import { sleep } from "bun"
 
 export interface ServerOptions {
 	// Required (If not set by env variables):
@@ -96,6 +97,8 @@ export class FetchError {
 	}
 }
 
+const DURATION_BETWEEN_CVS_SENT = 4000
+
 export class Server {
 	private port: number
 	private apiServer: string
@@ -106,8 +109,7 @@ export class Server {
 	private externalHandlers: Map<string, CustomHandlerCallback> = new Map()
 	private internalSlackCache?: Slack
 	private externalSlackCache?: Slack
-
-	public lastSentCv: string | null = null
+	public lastSentCv: Date | null = null
 
 	constructor(
 		public readonly slug: string,
@@ -460,6 +462,14 @@ export class Server {
 
 	// Send a scraped CV to RT-CV
 	public async sendCv(cv: Cv, preValidation = true): Promise<void> {
+		if (
+			this.lastSentCv &&
+			Date.now() - this.lastSentCv.getTime() < DURATION_BETWEEN_CVS_SENT
+		) {
+			// There needs to be last least 4 seconds between each cv that is sent
+			await sleep(DURATION_BETWEEN_CVS_SENT)
+		}
+
 		if (preValidation) this.validateCv(cv)
 
 		this.alternativeServer?.sendCv(cv, false).catch((e) => {
@@ -472,7 +482,7 @@ export class Server {
 				method: "POST",
 			})
 
-			this.lastSentCv = new Date().toISOString()
+			this.lastSentCv = new Date()
 		} catch (e) {
 			if (cv.personalDetails && e instanceof FetchError) {
 				let alteredCv = false
@@ -527,6 +537,14 @@ export class Server {
 
 	// sendCvDocument sends a CV document to RT-CV
 	public async sendCvDocument(metadata: Cv, cvFile: Blob, filename?: string) {
+		if (
+			this.lastSentCv &&
+			Date.now() - this.lastSentCv.getTime() < DURATION_BETWEEN_CVS_SENT
+		) {
+			// There needs to be last least 4 seconds between each cv that is sent
+			await sleep(DURATION_BETWEEN_CVS_SENT)
+		}
+
 		const body = new FormData()
 
 		body.set("metadata", JSON.stringify(metadata))
@@ -537,7 +555,7 @@ export class Server {
 			method: "POST",
 		})
 
-		this.lastSentCv = new Date().toISOString()
+		this.lastSentCv = new Date()
 
 		// Only send the cv document to the alternative server once the primary server has successfully received it
 		// We do this for 2 reasons:
