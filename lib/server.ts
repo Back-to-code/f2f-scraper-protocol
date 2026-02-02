@@ -111,6 +111,7 @@ export class Server {
 	private internalSlackCache?: Slack
 	private externalSlackCache?: Slack
 	private skipAliveCheck: boolean
+	private lastAliveCheck: number | null = null
 	public lastSentCv: Date | null = null
 
 	constructor(
@@ -237,12 +238,20 @@ export class Server {
 			return
 		}
 
+		if (
+			typeof this.lastAliveCheck === "number" &&
+			Date.now() - this.lastAliveCheck < 60 * 1000
+		) {
+			return
+		}
+
 		while (true) {
 			try {
 				const response = await this.fetch<{ active: boolean }>(
 					"/api/v1/scraper/status",
 				)
 				if (response.active) {
+					this.lastAliveCheck = Date.now()
 					return
 				}
 				console.log("Scraper is not active, waiting 5 minutes...")
