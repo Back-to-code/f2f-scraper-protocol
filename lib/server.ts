@@ -115,6 +115,7 @@ export class Server {
 		public readonly slug: string,
 		private handlers: Handlers,
 		options: ServerOptions,
+		public readonly isAlternativeServer: boolean = false,
 	) {
 		const potentialsServerPort = this.mightGetEnv("SERVER_PORT")
 		if (potentialsServerPort) {
@@ -189,6 +190,7 @@ export class Server {
 						alternativeServer: false,
 						port: this.port,
 					},
+					true,
 				)
 			}
 		}
@@ -234,10 +236,7 @@ export class Server {
 				}
 				console.log("Scraper is not active, waiting 5 minutes...")
 			} catch (e) {
-				console.warn(
-					"Failed to check scraper status, waiting 5 minutes...",
-					e,
-				)
+				console.warn("Failed to check scraper status, waiting 5 minutes...", e)
 			}
 			await sleep(5 * 60 * 1000)
 		}
@@ -482,7 +481,7 @@ export class Server {
 
 	// Send a scraped CV to RT-CV
 	public async sendCv(cv: Cv, checks = true): Promise<void> {
-		if (checks) {
+		if (checks && !this.isAlternativeServer) {
 			await this.alive()
 			await this.throttleCvSend()
 			this.validateCv(cv)
@@ -553,8 +552,10 @@ export class Server {
 
 	// sendCvDocument sends a CV document to RT-CV
 	public async sendCvDocument(metadata: Cv, cvFile: Blob, filename?: string) {
-		await this.alive()
-		await this.throttleCvSend()
+		if (!this.isAlternativeServer) {
+			await this.alive()
+			await this.throttleCvSend()
+		}
 
 		const body = new FormData()
 
