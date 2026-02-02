@@ -28,6 +28,10 @@ If set should define the port number to expose the scraper webserver that implem
 
 Default: `2000`
 
+### `SKIP_ALIVE_CHECK` *Optional*
+
+If set to `true`, the library will skip the check that verifies if the scraper is allowed to scrape (the `/api/v1/scraper/status` check). This is intended for local development.
+
 ## Internal server
 
 ### Auth
@@ -35,4 +39,3 @@ Default: `2000`
 The internal server must be secured using basic auth,
 
 Allowed login credentials should be the same as the credentials used to authenticate with RT-CV, this includes the alternative server.
-

@@ -22,6 +22,7 @@ export interface ServerOptions {
 	port?: number // If not set will try to use SERVER_PORT or default to: 3000
 	noHealthChecks?: boolean // If set to true will disable health checks on the RT-CV server
 	skipSlugCheck?: boolean // If set to true will not check and update the slug on the RT-CV server
+	skipAliveCheck?: boolean // If set to true will skip the check if the scraper is allowed to scrape
 
 	customHandlers?: CustomHandler[] // If set will add external handlers to the server
 }
@@ -109,6 +110,7 @@ export class Server {
 	private externalHandlers: Map<string, CustomHandlerCallback> = new Map()
 	private internalSlackCache?: Slack
 	private externalSlackCache?: Slack
+	private skipAliveCheck: boolean
 	public lastSentCv: Date | null = null
 
 	constructor(
@@ -126,6 +128,11 @@ export class Server {
 		} else {
 			this.port = options.port ?? 3000
 		}
+
+		this.skipAliveCheck =
+			options.skipAliveCheck ??
+			this.mightGetEnv("SKIP_ALIVE_CHECK").toLowerCase() === "true"
+
 		const apiServer = new URL(
 			options.apiServer || this.mustGetEnv("RTCV_SERVER"),
 		)
@@ -226,6 +233,10 @@ export class Server {
 	}
 
 	public async alive(): Promise<void> {
+		if (this.skipAliveCheck) {
+			return
+		}
+
 		while (true) {
 			try {
 				const response = await this.fetch<{ active: boolean }>(
