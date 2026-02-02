@@ -223,6 +223,26 @@ export class Server {
 		return stats
 	}
 
+	public async alive(): Promise<void> {
+		while (true) {
+			try {
+				const response = await this.fetch<{ active: boolean }>(
+					"/api/v1/scraper/status",
+				)
+				if (response.active) {
+					return
+				}
+				console.log("Scraper is not active, waiting 5 minutes...")
+			} catch (e) {
+				console.warn(
+					"Failed to check scraper status, waiting 5 minutes...",
+					e,
+				)
+			}
+			await sleep(5 * 60 * 1000)
+		}
+	}
+
 	public async fetchWithRetry<T = unknown>(
 		path: string,
 		options: FetchOptions = {},
@@ -463,6 +483,7 @@ export class Server {
 	// Send a scraped CV to RT-CV
 	public async sendCv(cv: Cv, checks = true): Promise<void> {
 		if (checks) {
+			await this.alive()
 			await this.throttleCvSend()
 			this.validateCv(cv)
 		}
@@ -532,6 +553,7 @@ export class Server {
 
 	// sendCvDocument sends a CV document to RT-CV
 	public async sendCvDocument(metadata: Cv, cvFile: Blob, filename?: string) {
+		await this.alive()
 		await this.throttleCvSend()
 
 		const body = new FormData()
