@@ -461,16 +461,11 @@ export class Server {
 	}
 
 	// Send a scraped CV to RT-CV
-	public async sendCv(cv: Cv, preValidation = true): Promise<void> {
-		if (
-			this.lastSentCv &&
-			Date.now() - this.lastSentCv.getTime() < DURATION_BETWEEN_CVS_SENT
-		) {
-			// There needs to be last least 4 seconds between each cv that is sent
-			await sleep(DURATION_BETWEEN_CVS_SENT)
+	public async sendCv(cv: Cv, checks = true): Promise<void> {
+		if (checks) {
+			await this.throttleCvSend()
+			this.validateCv(cv)
 		}
-
-		if (preValidation) this.validateCv(cv)
 
 		this.alternativeServer?.sendCv(cv, false).catch((e) => {
 			console.log("failed to send cv to alternative server,", e)
@@ -537,13 +532,7 @@ export class Server {
 
 	// sendCvDocument sends a CV document to RT-CV
 	public async sendCvDocument(metadata: Cv, cvFile: Blob, filename?: string) {
-		if (
-			this.lastSentCv &&
-			Date.now() - this.lastSentCv.getTime() < DURATION_BETWEEN_CVS_SENT
-		) {
-			// There needs to be last least 4 seconds between each cv that is sent
-			await sleep(DURATION_BETWEEN_CVS_SENT)
-		}
+		await this.throttleCvSend()
 
 		const body = new FormData()
 
@@ -571,6 +560,18 @@ export class Server {
 				.catch((e) => {
 					console.log("failed to send cv document to alternative server,", e)
 				})
+		}
+	}
+
+	// ThrottleCvSend throttles the sending of cv documents
+	// We do this as when a scraper behaves incorrectly we can still interrupt the sending of CVs
+	private async throttleCvSend() {
+		if (
+			this.lastSentCv &&
+			Date.now() - this.lastSentCv.getTime() < DURATION_BETWEEN_CVS_SENT
+		) {
+			// There needs to be last least 4 seconds between each cv that is sent
+			await sleep(DURATION_BETWEEN_CVS_SENT)
 		}
 	}
 
