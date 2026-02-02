@@ -11,7 +11,8 @@ import { Stats } from "./stats.ts"
 import { formatCvFilename } from "./cv_document.ts"
 import { Slack } from "./slack.ts"
 import { Registry } from "prom-client"
-import { sleep } from "bun"
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export interface ServerOptions {
 	// Required (If not set by env variables):
