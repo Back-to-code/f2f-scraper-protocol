@@ -1,5 +1,3 @@
-# MOVED OVER TO https://github.com/Back-to-code/f2f-scraper-protocol
-
 # Scraper
 
 This repo describes how a scraper should work and gives helper libaries for building a scraper
