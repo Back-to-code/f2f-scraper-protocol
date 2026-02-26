@@ -1,5 +1,5 @@
 export function isRecentCv(
-	dateModifiedOrCv: string | Cv | null | undefined
+	dateModifiedOrCv: string | Cv | null | undefined,
 ): boolean {
 	let dateModified: string | undefined
 	if (typeof dateModifiedOrCv === "string") {
@@ -43,6 +43,7 @@ export interface Cv {
 	vacancyInfo?: VacancyInfo
 	cached?: boolean
 	partial?: boolean
+	maxEducationLevel?: EducationLevel
 }
 
 export interface UnsupportedCVFields {
@@ -70,7 +71,25 @@ export interface Education {
 	hasDiploma?: boolean
 	startDate?: string // assuming JSONRFC3339Nano is a custom date format
 	endDate?: string // assuming JSONRFC3339Nano is a custom date format
+	level?: EducationLevel
 }
+
+type EducationLevel = None | Mbo1 | Mbo2 | Mbo3 | Mbo4 | Hbo | Master
+type Mbo1 = "mbo1" | "mbo-1" | "mbo 1"
+type Mbo2 = "mbo2" | "mbo-2" | "mbo 2" | "leao"
+type Mbo3 = "mbo3" | "mbo-3" | "mbo 3"
+type Mbo4 = "mbo4" | "mbo-4" | "mbo 4" | "mbo" | "lts" | "meao"
+type Hbo =
+	| "hbo"
+	| "wo"
+	| "hts"
+	| "heao"
+	| "bachelor"
+	| "universiteit"
+	| "university"
+	| "universite"
+type Master = "master" | "phd" | "ph.d" | "dr"
+type None = "geen"
 
 export interface WorkExperience {
 	description?: string
