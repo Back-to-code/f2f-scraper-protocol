@@ -248,15 +248,19 @@ export class Server {
 			return
 		}
 
+		const lastState = this.state
 		while (true) {
 			try {
 				const response = await this.fetch<{ active: boolean }>(
 					"/api/v1/scraper/status",
 				)
 				if (response.active) {
+					this.state = lastState
 					this.lastAliveCheck = Date.now()
 					return
 				}
+
+				this.state = State.Disabled
 				console.log("Scraper is not active, waiting 5 minutes...")
 			} catch (e) {
 				console.warn("Failed to check scraper status, waiting 5 minutes...", e)
