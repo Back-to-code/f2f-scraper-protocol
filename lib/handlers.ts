@@ -47,8 +47,9 @@ export interface Handlers {
 }
 
 interface BaseHealthResponse {
-	// iso timestamp with time of last send cv if it has been send
+	// iso timestamp with time of last sent cv if it has been send
 	lastSentCv: string | null
+	state: "scraping" | "waiting" | "sleeping" | "unknown"
 }
 
 interface HealthyResponse extends BaseHealthResponse {
@@ -89,12 +90,14 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 			if (!handlers.health) {
 				return Response.json({
 					status: true,
+					state: "scraping",
 					lastSentCv: server.lastSentCv?.toISOString() ?? null,
 				} satisfies HealthyResponse)
 			}
 
 			const errorResponse: UnhealthyResponse = {
 				status: false,
+				state: "unknown",
 				lastSentCv: server.lastSentCv?.toISOString() ?? null,
 				errors: [],
 			}
@@ -105,6 +108,7 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 				if (!scraperErrors || scraperErrors.length === 0) {
 					return Response.json({
 						status: true,
+						state: "scraping",
 						lastSentCv: server.lastSentCv?.toISOString() ?? null,
 					} satisfies HealthyResponse)
 				}
