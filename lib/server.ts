@@ -3,6 +3,7 @@ import {
 	CustomHandlerCallback,
 	Handlers,
 	PotentialPromise,
+	State,
 	resolveApiHandler,
 	resolveExternalHandler,
 } from "./handlers.ts"
@@ -114,6 +115,7 @@ export class Server {
 	private skipAliveCheck: boolean
 	private lastAliveCheck: number | null = null
 	public lastSentCv: Date | null = null
+	public state: State = State.Unknown
 
 	constructor(
 		public readonly slug: string,
