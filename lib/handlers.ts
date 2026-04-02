@@ -99,7 +99,7 @@ function apiHandlers(handlers: Handlers): ApiHandlers {
 			if (!handlers.health) {
 				return Response.json({
 					status: true,
-					state: server.lastSentCv ? State.Scraping : State.Waiting,
+					state: server.state ?? State.Unknown,
 					lastSentCv: server.lastSentCv?.toISOString() ?? null,
 				} satisfies HealthyResponse)
 			}
