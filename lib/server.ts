@@ -11,6 +11,8 @@ import { type Cv } from "./cv.ts"
 import { Stats } from "./stats.ts"
 import { formatCvFilename } from "./cv_document.ts"
 import { Slack } from "./slack.ts"
+import { AppTokenManager } from "./app_auth.ts"
+import { mapRtcvPathToAppPath } from "./app_routes.ts"
 import { Registry } from "prom-client"
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -21,6 +23,12 @@ export interface ServerOptions {
 
 	// Optional:
 	alternativeServer?: string | false // If not set will try to use RTCV_ALTERNATIVE_SERVER env variable, if set to false will disable alternative server
+	f2fAppUrl?: string // If not set will try to use F2F_APP_URL env variable
+	f2fAppKeyId?: string // If not set will try to use F2F_APP_KEY_ID env variable
+	f2fAppKeySecret?: string // If not set will try to use F2F_APP_KEY_SECRET env variable
+	f2fAlternativeAppUrl?: string | false // If not set will try to use F2F_ALTERNATIVE_APP_URL, if set to false will disable alternative app
+	f2fAlternativeAppKeyId?: string // If not set will try to use F2F_ALTERNATIVE_APP_KEY_ID env variable
+	f2fAlternativeAppKeySecret?: string // If not set will try to use F2F_ALTERNATIVE_APP_KEY_SECRET env variable
 	port?: number // If not set will try to use SERVER_PORT or default to: 3000
 	noHealthChecks?: boolean // If set to true will disable health checks on the RT-CV server
 	skipSlugCheck?: boolean // If set to true will not check and update the slug on the RT-CV server
@@ -109,6 +117,9 @@ export class Server {
 	private primaryServerAuth: ServerAuth
 	private alternativeServerAuth?: ServerAuth
 	private alternativeServer?: Server
+	private isAppMode: boolean = false
+	private appTokenManager?: AppTokenManager
+	private appBaseUrl?: string
 	private externalHandlers: Map<string, CustomHandlerCallback> = new Map()
 	private internalSlackCache?: Slack
 	private externalSlackCache?: Slack
@@ -137,6 +148,27 @@ export class Server {
 			options.skipAliveCheck ??
 			this.mightGetEnv("SKIP_ALIVE_CHECK").toLowerCase() === "true"
 
+		// Check for F2F_APP mode
+		const f2fAppUrl = options.f2fAppUrl || this.mightGetEnv("F2F_APP_URL")
+		if (f2fAppUrl) {
+			const f2fAppKeyId = options.f2fAppKeyId || this.mightGetEnv("F2F_APP_KEY_ID")
+			const f2fAppKeySecret = options.f2fAppKeySecret || this.mightGetEnv("F2F_APP_KEY_SECRET")
+			if (!f2fAppKeyId || !f2fAppKeySecret) {
+				console.log(
+					"F2F_APP_KEY_ID and F2F_APP_KEY_SECRET are required when F2F_APP_URL is set",
+				)
+				process.exit(1)
+			}
+
+			this.isAppMode = true
+			this.appBaseUrl = f2fAppUrl.replace(/\/+$/, "") // strip trailing slash
+			this.appTokenManager = new AppTokenManager({
+				url: this.appBaseUrl,
+				keyId: f2fAppKeyId,
+				keySecret: f2fAppKeySecret,
+			})
+		}
+
 		const apiServer = new URL(
 			options.apiServer || this.mustGetEnv("RTCV_SERVER"),
 		)
@@ -161,6 +193,10 @@ export class Server {
 			password: apiServer.password,
 		}
 
+		if (this.isAppMode) {
+			console.log("F2F_APP_URL is set, outgoing requests will be routed through the app. RTCV_SERVER is used for incoming callback authentication.")
+		}
+
 		// Health check the RT-CV server
 		if (!options.noHealthChecks) {
 			this.health().catch((e) => {
@@ -180,29 +216,80 @@ export class Server {
 			}
 		}
 
-		if (options.alternativeServer !== false) {
-			const alternativeServer =
-				options.alternativeServer || this.mightGetEnv("RTCV_ALTERNATIVE_SERVER")
+		if (options.alternativeServer !== false && options.f2fAlternativeAppUrl !== false) {
+			if (this.isAppMode) {
+				// In app mode, use F2F_ALTERNATIVE_APP_* vars
+				const altAppUrl =
+					options.f2fAlternativeAppUrl || this.mightGetEnv("F2F_ALTERNATIVE_APP_URL")
 
-			if (alternativeServer) {
-				const alternativeServerUrl = new URL(alternativeServer)
-				if (alternativeServerUrl.username && alternativeServerUrl.password) {
-					this.alternativeServerAuth = {
-						username: alternativeServerUrl.username,
-						password: alternativeServerUrl.password,
-					}
+				const alternativeRtcvServer = this.mightGetEnv("RTCV_ALTERNATIVE_SERVER")
+				if (alternativeRtcvServer) {
+					console.warn(
+						"Warning: RTCV_ALTERNATIVE_SERVER is ignored because F2F_APP_URL is set. Use F2F_ALTERNATIVE_APP_URL instead.",
+					)
 				}
 
-				this.alternativeServer = new Server(
-					slug,
-					{},
-					{
-						apiServer: alternativeServer,
-						alternativeServer: false,
-						port: this.port,
-					},
-					true,
-				)
+				if (altAppUrl) {
+					const altAppKeyId =
+						options.f2fAlternativeAppKeyId || this.mightGetEnv("F2F_ALTERNATIVE_APP_KEY_ID")
+					const altAppKeySecret =
+						options.f2fAlternativeAppKeySecret || this.mightGetEnv("F2F_ALTERNATIVE_APP_KEY_SECRET")
+
+					if (!altAppKeyId || !altAppKeySecret) {
+						console.log(
+							"F2F_ALTERNATIVE_APP_KEY_ID and F2F_ALTERNATIVE_APP_KEY_SECRET are required when F2F_ALTERNATIVE_APP_URL is set",
+						)
+						process.exit(1)
+					}
+
+					this.alternativeServer = new Server(
+						slug,
+						{},
+						{
+							f2fAppUrl: altAppUrl,
+							f2fAppKeyId: altAppKeyId,
+							f2fAppKeySecret: altAppKeySecret,
+							apiServer: options.apiServer || this.mightGetEnv("RTCV_SERVER"),
+							alternativeServer: false,
+							f2fAlternativeAppUrl: false,
+							port: this.port,
+						},
+						true,
+					)
+				}
+			} else {
+				// In RT-CV mode, use RTCV_ALTERNATIVE_SERVER (existing behavior)
+				const alternativeServer =
+					options.alternativeServer || this.mightGetEnv("RTCV_ALTERNATIVE_SERVER")
+
+				const alternativeAppUrl = this.mightGetEnv("F2F_ALTERNATIVE_APP_URL")
+				if (alternativeAppUrl) {
+					console.warn(
+						"Warning: F2F_ALTERNATIVE_APP_URL is ignored because F2F_APP_URL is not set. Use RTCV_ALTERNATIVE_SERVER instead.",
+					)
+				}
+
+				if (alternativeServer) {
+					const alternativeServerUrl = new URL(alternativeServer)
+					if (alternativeServerUrl.username && alternativeServerUrl.password) {
+						this.alternativeServerAuth = {
+							username: alternativeServerUrl.username,
+							password: alternativeServerUrl.password,
+						}
+					}
+
+					this.alternativeServer = new Server(
+						slug,
+						{},
+						{
+							apiServer: alternativeServer,
+							alternativeServer: false,
+							f2fAlternativeAppUrl: false,
+							port: this.port,
+						},
+						true,
+					)
+				}
 			}
 		}
 	}
@@ -313,8 +400,8 @@ export class Server {
 		}
 	}
 
-	// Make a request to RT-CV
-	// Returns the response decoded as JSOn
+	// Make a request to RT-CV or f2f-app (depending on mode)
+	// Returns the response decoded as JSON
 	public async fetch<T = unknown>(
 		path: string,
 		options: FetchOptions = {},
@@ -322,12 +409,19 @@ export class Server {
 		const controller = new AbortController()
 		const id = setTimeout(() => controller.abort(), 60_000)
 
+		// In app mode: remap path and use app base URL
+		const effectivePath = this.isAppMode ? mapRtcvPathToAppPath(path) : path
+		const effectiveBaseUrl = this.isAppMode ? this.appBaseUrl! : this.apiServer
+
+		const authHeader = await this.getAuthorizationHeader()
+
 		const fetchOptions: Parameters<typeof fetch>[1] = {
 			method: options.method,
 			headers: {
 				...options.headers,
 				Accept: "application/json",
-				Authorization: this.authorizationHeader,
+				Authorization: authHeader,
+				...(this.isAppMode ? { "X-Scraper-Slug": this.slug } : {}),
 			},
 			signal: controller.signal,
 		}
@@ -335,7 +429,6 @@ export class Server {
 		if (options.body) {
 			if (options.body instanceof FormData) {
 				fetchOptions.body = options.body
-				// Content-Type will be set automatically by the fetch method
 			} else {
 				fetchOptions.body = JSON.stringify(options.body)
 				fetchOptions.headers = {
@@ -345,7 +438,7 @@ export class Server {
 			}
 		}
 
-		const r = await fetch(this.apiServer + path, fetchOptions)
+		const r = await fetch(effectiveBaseUrl + effectivePath, fetchOptions)
 		clearTimeout(id)
 		if (r.status >= 400) {
 			throw new FetchError(await r.text(), path, r.status)
@@ -700,7 +793,11 @@ export class Server {
 	// Private methods
 	// ---
 
-	private get authorizationHeader() {
+	private async getAuthorizationHeader(): Promise<string> {
+		if (this.isAppMode && this.appTokenManager) {
+			const token = await this.appTokenManager.getToken()
+			return `Bearer ${token}`
+		}
 		return `Basic ${this.primaryServerAuth.username}:${this.primaryServerAuth.password}`
 	}
 
