@@ -11,9 +11,9 @@
 const TOKEN_CACHE_DURATION_MS = 8 * 60 * 1000
 
 export interface AppAuth {
-	url: string // F2F_APP_URL
-	keyId: string // F2F_APP_KEY_ID (= API token nameSlug)
-	keySecret: string // F2F_APP_KEY_SECRET
+	url: string // from F2F_APP origin
+	keyId: string // from F2F_APP, API token nameSlug
+	keySecret: string // from F2F_APP, API token secret
 }
 
 export class AppTokenManager {
