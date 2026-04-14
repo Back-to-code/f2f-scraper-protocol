@@ -35,11 +35,13 @@ export class AppTokenManager {
 		const headers = { "Content-Type": "application/json" }
 
 		// 1. Request challenge
-		const { challenge } = await fetch(`${base}/challenge`, {
+		const challengeRes = await fetch(`${base}/challenge`, {
 			method: "POST",
 			headers,
 			body: JSON.stringify({ nameSlug: this.auth.keyId }),
-		}).then((res) => res.json()) as { challenge: string }
+		})
+		if (!challengeRes.ok) throw new Error(`F2F App challenge failed (${challengeRes.status}): ${await challengeRes.text()}`)
+		const { challenge } = await challengeRes.json() as { challenge: string }
 
 		// 2. Calculate proof (SHA-512)
 		const msgUint8 = new TextEncoder().encode(challenge + this.auth.keySecret)
@@ -48,11 +50,13 @@ export class AppTokenManager {
 		const proof = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
 
 		// 3. Exchange for token
-		const { token } = await fetch(`${base}/exchange`, {
+		const tokenRes = await fetch(`${base}/exchange`, {
 			method: "POST",
 			headers,
 			body: JSON.stringify({ nameSlug: this.auth.keyId, proof }),
-		}).then((res) => res.json()) as { token: string }
+		})
+		if (!tokenRes.ok) throw new Error(`F2F App token exchange failed (${tokenRes.status}): ${await tokenRes.text()}`)
+		const { token } = await tokenRes.json() as { token: string }
 
 		// 4. Cache token
 		this.token = token
