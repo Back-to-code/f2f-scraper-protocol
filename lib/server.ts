@@ -147,6 +147,12 @@ export class Server {
 		const f2fAppRaw = options.f2fApp || this.mightGetEnv("F2F_APP")
 		if (f2fAppRaw) {
 			const f2fApp = new URL(f2fAppRaw)
+			if (f2fApp.protocol !== "f2f:" && f2fApp.protocol !== "f2fs:") {
+				console.log(
+					"F2F_APP must use f2f:// (http) or f2fs:// (https) protocol, e.g. f2fs://keyId:keySecret@app.first2find.nl",
+				)
+				process.exit(1)
+			}
 			if (!f2fApp.username || !f2fApp.password) {
 				console.log(
 					"F2F_APP must contain credentials, e.g. f2fs://keyId:keySecret@app.first2find.nl",
