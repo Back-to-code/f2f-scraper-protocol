@@ -246,7 +246,7 @@ export class Server {
 					)
 				}
 			} else {
-				// In RT-CV mode, use RTCV_ALTERNATIVE_SERVER (existing behavior)
+				// In RT-CV mode, use RTCV_ALTERNATIVE_SERVER
 				const alternativeServer =
 					options.alternativeServer || this.mightGetEnv("RTCV_ALTERNATIVE_SERVER")
 
