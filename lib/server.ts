@@ -688,7 +688,7 @@ export class Server {
 		//   2. If the primary server fails to scan the cv document the alternative server will also very likely fail.
 		if (this.alternativeServer) {
 			await this.alternativeServer
-				.fetch(this.isAppMode ? "/api/private/scraper/scan-cv-document" : "/api/v1/scraper/scanCVDocument", {
+				.fetch(this.alternativeServer.isAppMode ? "/api/private/scraper/scan-cv-document" : "/api/v1/scraper/scanCVDocument", {
 					body,
 					method: "POST",
 				})
