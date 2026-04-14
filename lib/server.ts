@@ -407,7 +407,7 @@ export class Server {
 				...options.headers,
 				Accept: "application/json",
 				Authorization: authHeader,
-				...(this.isAppMode ? { "X-Scraper-Slug": this.slug } : {}),
+				"X-Scraper-Slug": this.slug,
 			},
 			signal: controller.signal,
 		}
