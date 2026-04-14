@@ -12,7 +12,6 @@ import { Stats } from "./stats.ts"
 import { formatCvFilename } from "./cv_document.ts"
 import { Slack } from "./slack.ts"
 import { AppTokenManager } from "./app_auth.ts"
-import { mapRtcvPathToAppPath } from "./app_routes.ts"
 import { Registry } from "prom-client"
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -117,7 +116,7 @@ export class Server {
 	private primaryServerAuth: ServerAuth
 	private alternativeServerAuth?: ServerAuth
 	private alternativeServer?: Server
-	private isAppMode: boolean = false
+	public readonly isAppMode: boolean = false
 	private appTokenManager?: AppTokenManager
 	private appBaseUrl?: string
 	private externalHandlers: Map<string, CustomHandlerCallback> = new Map()
@@ -339,7 +338,7 @@ export class Server {
 		while (true) {
 			try {
 				const response = await this.fetch<{ active: boolean }>(
-					"/api/v1/scraper/status",
+					this.isAppMode ? "/api/private/scraper/status" : "/api/v1/scraper/status",
 				)
 				if (response.active) {
 					this.state = lastState
@@ -409,9 +408,7 @@ export class Server {
 		const controller = new AbortController()
 		const id = setTimeout(() => controller.abort(), 60_000)
 
-		// In app mode: remap path and use app base URL
-		const effectivePath = this.isAppMode ? mapRtcvPathToAppPath(path) : path
-		const effectiveBaseUrl = this.isAppMode ? this.appBaseUrl! : this.apiServer
+		const baseUrl = this.isAppMode ? this.appBaseUrl! : this.apiServer
 
 		const authHeader = await this.getAuthorizationHeader()
 
@@ -438,7 +435,7 @@ export class Server {
 			}
 		}
 
-		const r = await fetch(effectiveBaseUrl + effectivePath, fetchOptions)
+		const r = await fetch(baseUrl + path, fetchOptions)
 		clearTimeout(id)
 		if (r.status >= 400) {
 			throw new FetchError(await r.text(), path, r.status)
@@ -449,14 +446,14 @@ export class Server {
 
 	// health checks if the api server is up and running and if not throws an error
 	public async health() {
-		await this.fetchWithRetry("/api/v1/health")
+		await this.fetchWithRetry(this.isAppMode ? "/api/private/scraper/health" : "/api/v1/health")
 	}
 
 	// get all login users for the api key
 	public async getUsers(
 		mustBeAtLeastOneUser: boolean,
 	): Promise<Array<LoginUser>> {
-		const response = await this.fetchWithRetry("/api/v1/scraperUsers")
+		const response = await this.fetchWithRetry(this.isAppMode ? "/api/private/scraper/users" : "/api/v1/scraperUsers")
 		const { users } = response as any
 
 		if (users.length == 0 && mustBeAtLeastOneUser) {
@@ -491,7 +488,7 @@ export class Server {
 				: usernameOrUser.username
 
 		try {
-			await this.fetchWithRetry("/api/v1/scraperUsers/reportLoginAttempt", {
+			await this.fetchWithRetry(this.isAppMode ? "/api/private/scraper/users/report-login-attempt" : "/api/v1/scraperUsers/reportLoginAttempt", {
 				method: "POST",
 				body: {
 					username,
@@ -519,7 +516,9 @@ export class Server {
 	}> {
 		const credentials: Array<SiteStorageCredentials> =
 			await this.fetchWithRetry(
-				"/api/v1/siteStorageCredentials/scraper/" + this.apiKeyId,
+				this.isAppMode
+					? "/api/private/scraper/site-storage-credentials/" + this.apiKeyId
+					: "/api/v1/siteStorageCredentials/scraper/" + this.apiKeyId,
 			)
 
 		if (!Array.isArray(credentials)) {
@@ -554,7 +553,9 @@ export class Server {
 		credential: SiteStorageCredentials,
 	): Promise<SiteStorageCredentials> {
 		return this.fetchWithRetry(
-			"/api/v1/siteStorageCredentials/" + credential.id + "/invalidate",
+			this.isAppMode
+				? "/api/private/scraper/site-storage-credentials/" + credential.id + "/invalidate"
+				: "/api/v1/siteStorageCredentials/" + credential.id + "/invalidate",
 			{ method: "PATCH" },
 		)
 	}
@@ -564,7 +565,9 @@ export class Server {
 		credential: SiteStorageCredentials,
 	): Promise<SiteStorageCredentials> {
 		return this.fetchWithRetry(
-			"/api/v1/siteStorageCredentials/" + credential.id + "/validate",
+			this.isAppMode
+				? "/api/private/scraper/site-storage-credentials/" + credential.id + "/validate"
+				: "/api/v1/siteStorageCredentials/" + credential.id + "/validate",
 			{ method: "PATCH" },
 		)
 	}
@@ -591,7 +594,7 @@ export class Server {
 	async cvHasMatches(cv: Cv): Promise<boolean> {
 		this.validateCv(cv)
 
-		const response = await this.fetchWithRetry("/api/v1/scraper/dryScanCV", {
+		const response = await this.fetchWithRetry(this.isAppMode ? "/api/private/scraper/dry-scan-cv" : "/api/v1/scraper/dryScanCV", {
 			body: { cv },
 			method: "POST",
 		})
@@ -612,7 +615,7 @@ export class Server {
 		})
 
 		try {
-			await this.fetchWithRetry("/api/v1/scraper/scanCV", {
+			await this.fetchWithRetry(this.isAppMode ? "/api/private/scraper/scan-cv" : "/api/v1/scraper/scanCV", {
 				body: { cv },
 				method: "POST",
 			})
@@ -664,7 +667,7 @@ export class Server {
 			console.log("failed to send cvs list to alternative server,", e)
 		})
 		const body = { cvs }
-		await this.fetchWithRetry("/api/v1/scraper/allCVs", {
+		await this.fetchWithRetry(this.isAppMode ? "/api/private/scraper/all-cvs" : "/api/v1/scraper/allCVs", {
 			body,
 			method: "POST",
 		})
@@ -682,7 +685,7 @@ export class Server {
 		body.set("metadata", JSON.stringify(metadata))
 		body.set("cv", cvFile, formatCvFilename(filename, cvFile.type))
 
-		await this.fetchWithRetry("/api/v1/scraper/scanCVDocument", {
+		await this.fetchWithRetry(this.isAppMode ? "/api/private/scraper/scan-cv-document" : "/api/v1/scraper/scanCVDocument", {
 			body,
 			method: "POST",
 		})
@@ -696,7 +699,7 @@ export class Server {
 		//   2. If the primary server fails to scan the cv document the alternative server will also very likely fail.
 		if (this.alternativeServer) {
 			await this.alternativeServer
-				.fetch("/api/v1/scraper/scanCVDocument", {
+				.fetch(this.isAppMode ? "/api/private/scraper/scan-cv-document" : "/api/v1/scraper/scanCVDocument", {
 					body,
 					method: "POST",
 				})
@@ -752,7 +755,7 @@ export class Server {
 	public candidateRequestPersonalDetials(
 		referenceNr: string,
 	): Promise<{ candidate: Candidate; created: boolean }> {
-		return this.fetch("/api/v1/candidates", {
+		return this.fetch(this.isAppMode ? "/api/private/scraper/candidates" : "/api/v1/candidates", {
 			method: "POST",
 			body: { referenceNr },
 		})
@@ -760,7 +763,11 @@ export class Server {
 
 	public async cvVisit(referenceNr: string): Promise<VisitedCv | undefined> {
 		try {
-			return await this.fetch("/api/v1/visitedCvs/byReference/" + referenceNr)
+			return await this.fetch(
+				this.isAppMode
+					? "/api/private/scraper/visited-cvs/by-reference/" + referenceNr
+					: "/api/v1/visitedCvs/byReference/" + referenceNr,
+			)
 		} catch (e) {
 			if (
 				e instanceof FetchError &&
@@ -924,7 +931,7 @@ export class Server {
 			overwroteExisting: boolean
 		}
 		try {
-			slugResponse = await this.fetchWithRetry("/api/v1/scraper/setSlug", {
+			slugResponse = await this.fetchWithRetry(this.isAppMode ? "/api/private/scraper/set-slug" : "/api/v1/scraper/setSlug", {
 				method: "PUT",
 				body: { slug: this.slug },
 			})
