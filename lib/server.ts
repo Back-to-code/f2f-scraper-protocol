@@ -22,7 +22,7 @@ export interface ServerOptions {
 
 	// Optional:
 	alternativeServer?: string | false // If not set will try to use RTCV_ALTERNATIVE_SERVER env variable, if set to false will disable alternative server
-	f2fApp?: string | false // If not set will try to use F2F_APP env variable (format: f2f://keyId:keySecret@host), if set to false will disable app mode
+	f2fApp?: string | false // If not set will try to use F2F_APP env variable (format: f2f[s]://keyId:keySecret@host, s = https), if set to false will disable app mode
 	f2fAlternativeApp?: string | false // If not set will try to use F2F_ALTERNATIVE_APP env variable (same format), if set to false will disable alternative app
 	port?: number // If not set will try to use SERVER_PORT or default to: 3000
 	noHealthChecks?: boolean // If set to true will disable health checks on the RT-CV server
@@ -143,19 +143,19 @@ export class Server {
 			options.skipAliveCheck ??
 			this.mightGetEnv("SKIP_ALIVE_CHECK").toLowerCase() === "true"
 
-		// Check for F2F_APP mode (format: f2f://keyId:keySecret@host)
+		// Check for F2F_APP mode (format: f2f:// or f2fs:// for http/https)
 		const f2fAppRaw = options.f2fApp || this.mightGetEnv("F2F_APP")
 		if (f2fAppRaw) {
 			const f2fApp = new URL(f2fAppRaw)
 			if (!f2fApp.username || !f2fApp.password) {
 				console.log(
-					"F2F_APP must contain credentials, e.g. f2f://keyId:keySecret@app.first2find.nl",
+					"F2F_APP must contain credentials, e.g. f2fs://keyId:keySecret@app.first2find.nl",
 				)
 				process.exit(1)
 			}
 
 			this.isAppMode = true
-			this.appBaseUrl = "http://" + f2fApp.host
+			this.appBaseUrl = (f2fApp.protocol === "f2fs:" ? "https://" : "http://") + f2fApp.host
 			this.appTokenManager = new AppTokenManager({
 				url: this.appBaseUrl,
 				keyId: f2fApp.username,
@@ -227,7 +227,7 @@ export class Server {
 					const altApp = new URL(altAppRaw)
 					if (!altApp.username || !altApp.password) {
 						console.log(
-							"F2F_ALTERNATIVE_APP must contain credentials, e.g. f2f://keyId:keySecret@app.first2find.nl",
+							"F2F_ALTERNATIVE_APP must contain credentials, e.g. f2fs://keyId:keySecret@app.first2find.nl",
 						)
 						process.exit(1)
 					}
