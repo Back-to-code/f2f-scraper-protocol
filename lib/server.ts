@@ -11,6 +11,7 @@ import { type Cv } from "./cv.ts"
 import { Stats } from "./stats.ts"
 import { formatCvFilename } from "./cv_document.ts"
 import { Slack } from "./slack.ts"
+import { AppTokenManager } from "./app_auth.ts"
 import { Registry } from "prom-client"
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -21,6 +22,8 @@ export interface ServerOptions {
 
 	// Optional:
 	alternativeServer?: string | false // If not set will try to use RTCV_ALTERNATIVE_SERVER env variable, if set to false will disable alternative server
+	f2fApp?: string | false // If not set will try to use F2F_APP env variable (format: f2f[s]://keyId:keySecret@host, s = https), if set to false will disable app mode
+	f2fAlternativeApp?: string | false // If not set will try to use F2F_ALTERNATIVE_APP env variable (same format), if set to false will disable alternative app
 	port?: number // If not set will try to use SERVER_PORT or default to: 3000
 	noHealthChecks?: boolean // If set to true will disable health checks on the RT-CV server
 	skipSlugCheck?: boolean // If set to true will not check and update the slug on the RT-CV server
@@ -109,6 +112,9 @@ export class Server {
 	private primaryServerAuth: ServerAuth
 	private alternativeServerAuth?: ServerAuth
 	private alternativeServer?: Server
+	public readonly isAppMode: boolean = false
+	private appTokenManager?: AppTokenManager
+	private appBaseUrl?: string
 	private externalHandlers: Map<string, CustomHandlerCallback> = new Map()
 	private internalSlackCache?: Slack
 	private externalSlackCache?: Slack
@@ -137,6 +143,32 @@ export class Server {
 			options.skipAliveCheck ??
 			this.mightGetEnv("SKIP_ALIVE_CHECK").toLowerCase() === "true"
 
+		// Check for F2F_APP mode (format: f2f:// or f2fs:// for http/https)
+		const f2fAppRaw = options.f2fApp || this.mightGetEnv("F2F_APP")
+		if (f2fAppRaw) {
+			const f2fApp = new URL(f2fAppRaw)
+			if (f2fApp.protocol !== "f2f:" && f2fApp.protocol !== "f2fs:") {
+				console.log(
+					"F2F_APP must use f2f:// (http) or f2fs:// (https) protocol, e.g. f2fs://keyId:keySecret@app.first2find.nl",
+				)
+				process.exit(1)
+			}
+			if (!f2fApp.username || !f2fApp.password) {
+				console.log(
+					"F2F_APP must contain credentials, e.g. f2fs://keyId:keySecret@app.first2find.nl",
+				)
+				process.exit(1)
+			}
+
+			this.isAppMode = true
+			this.appBaseUrl = (f2fApp.protocol === "f2fs:" ? "https://" : "http://") + f2fApp.host
+			this.appTokenManager = new AppTokenManager({
+				url: this.appBaseUrl,
+				keyId: f2fApp.username,
+				keySecret: f2fApp.password,
+			})
+		}
+
 		const apiServer = new URL(
 			options.apiServer || this.mustGetEnv("RTCV_SERVER"),
 		)
@@ -161,6 +193,10 @@ export class Server {
 			password: apiServer.password,
 		}
 
+		if (this.isAppMode) {
+			console.log("F2F_APP is set, outgoing requests will be routed through the app. RTCV_SERVER is used for incoming callback authentication.")
+		}
+
 		// Health check the RT-CV server
 		if (!options.noHealthChecks) {
 			this.health().catch((e) => {
@@ -180,29 +216,74 @@ export class Server {
 			}
 		}
 
-		if (options.alternativeServer !== false) {
-			const alternativeServer =
-				options.alternativeServer || this.mightGetEnv("RTCV_ALTERNATIVE_SERVER")
+		if (options.alternativeServer !== false && options.f2fAlternativeApp !== false) {
+			if (this.isAppMode) {
+				// In app mode, use F2F_ALTERNATIVE_APP
+				const altAppRaw =
+					options.f2fAlternativeApp || this.mightGetEnv("F2F_ALTERNATIVE_APP")
 
-			if (alternativeServer) {
-				const alternativeServerUrl = new URL(alternativeServer)
-				if (alternativeServerUrl.username && alternativeServerUrl.password) {
-					this.alternativeServerAuth = {
-						username: alternativeServerUrl.username,
-						password: alternativeServerUrl.password,
-					}
+				const alternativeRtcvServer = this.mightGetEnv("RTCV_ALTERNATIVE_SERVER")
+				if (alternativeRtcvServer) {
+					console.warn(
+						"Warning: RTCV_ALTERNATIVE_SERVER is ignored because F2F_APP is set. Use F2F_ALTERNATIVE_APP instead.",
+					)
 				}
 
-				this.alternativeServer = new Server(
-					slug,
-					{},
-					{
-						apiServer: alternativeServer,
-						alternativeServer: false,
-						port: this.port,
-					},
-					true,
-				)
+				if (altAppRaw) {
+					const altApp = new URL(altAppRaw)
+					if (!altApp.username || !altApp.password) {
+						console.log(
+							"F2F_ALTERNATIVE_APP must contain credentials, e.g. f2fs://keyId:keySecret@app.first2find.nl",
+						)
+						process.exit(1)
+					}
+
+					this.alternativeServer = new Server(
+						slug,
+						{},
+						{
+							f2fApp: altAppRaw,
+							apiServer: options.apiServer || this.mightGetEnv("RTCV_SERVER"),
+							alternativeServer: false,
+							f2fAlternativeApp: false,
+							port: this.port,
+						},
+						true,
+					)
+				}
+			} else {
+				// In RT-CV mode, use RTCV_ALTERNATIVE_SERVER
+				const alternativeServer =
+					options.alternativeServer || this.mightGetEnv("RTCV_ALTERNATIVE_SERVER")
+
+				const alternativeAppRaw = this.mightGetEnv("F2F_ALTERNATIVE_APP")
+				if (alternativeAppRaw) {
+					console.warn(
+						"Warning: F2F_ALTERNATIVE_APP is ignored because F2F_APP is not set. Use RTCV_ALTERNATIVE_SERVER instead.",
+					)
+				}
+
+				if (alternativeServer) {
+					const alternativeServerUrl = new URL(alternativeServer)
+					if (alternativeServerUrl.username && alternativeServerUrl.password) {
+						this.alternativeServerAuth = {
+							username: alternativeServerUrl.username,
+							password: alternativeServerUrl.password,
+						}
+					}
+
+					this.alternativeServer = new Server(
+						slug,
+						{},
+						{
+							apiServer: alternativeServer,
+							alternativeServer: false,
+							f2fAlternativeApp: false,
+							port: this.port,
+						},
+						true,
+					)
+				}
 			}
 		}
 	}
@@ -252,7 +333,7 @@ export class Server {
 		while (true) {
 			try {
 				const response = await this.fetch<{ active: boolean }>(
-					"/api/v1/scraper/status",
+					this.isAppMode ? "/api/private/scraper/status" : "/api/v1/scraper/status",
 				)
 				if (response.active) {
 					this.state = lastState
@@ -313,8 +394,8 @@ export class Server {
 		}
 	}
 
-	// Make a request to RT-CV
-	// Returns the response decoded as JSOn
+	// Make a request to RT-CV or f2f-app (depending on mode)
+	// Returns the response decoded as JSON
 	public async fetch<T = unknown>(
 		path: string,
 		options: FetchOptions = {},
@@ -322,12 +403,17 @@ export class Server {
 		const controller = new AbortController()
 		const id = setTimeout(() => controller.abort(), 60_000)
 
+		const baseUrl = this.isAppMode ? this.appBaseUrl! : this.apiServer
+
+		const authHeader = await this.getAuthorizationHeader()
+
 		const fetchOptions: Parameters<typeof fetch>[1] = {
 			method: options.method,
 			headers: {
 				...options.headers,
 				Accept: "application/json",
-				Authorization: this.authorizationHeader,
+				Authorization: authHeader,
+				"X-Scraper-Slug": this.slug,
 			},
 			signal: controller.signal,
 		}
@@ -335,7 +421,6 @@ export class Server {
 		if (options.body) {
 			if (options.body instanceof FormData) {
 				fetchOptions.body = options.body
-				// Content-Type will be set automatically by the fetch method
 			} else {
 				fetchOptions.body = JSON.stringify(options.body)
 				fetchOptions.headers = {
@@ -345,7 +430,7 @@ export class Server {
 			}
 		}
 
-		const r = await fetch(this.apiServer + path, fetchOptions)
+		const r = await fetch(baseUrl + path, fetchOptions)
 		clearTimeout(id)
 		if (r.status >= 400) {
 			throw new FetchError(await r.text(), path, r.status)
@@ -356,14 +441,14 @@ export class Server {
 
 	// health checks if the api server is up and running and if not throws an error
 	public async health() {
-		await this.fetchWithRetry("/api/v1/health")
+		await this.fetchWithRetry(this.isAppMode ? "/api/private/scraper/health" : "/api/v1/health")
 	}
 
 	// get all login users for the api key
 	public async getUsers(
 		mustBeAtLeastOneUser: boolean,
 	): Promise<Array<LoginUser>> {
-		const response = await this.fetchWithRetry("/api/v1/scraperUsers")
+		const response = await this.fetchWithRetry(this.isAppMode ? "/api/private/scraper/users" : "/api/v1/scraperUsers")
 		const { users } = response as any
 
 		if (users.length == 0 && mustBeAtLeastOneUser) {
@@ -398,7 +483,7 @@ export class Server {
 				: usernameOrUser.username
 
 		try {
-			await this.fetchWithRetry("/api/v1/scraperUsers/reportLoginAttempt", {
+			await this.fetchWithRetry(this.isAppMode ? "/api/private/scraper/users/report-login-attempt" : "/api/v1/scraperUsers/reportLoginAttempt", {
 				method: "POST",
 				body: {
 					username,
@@ -426,7 +511,9 @@ export class Server {
 	}> {
 		const credentials: Array<SiteStorageCredentials> =
 			await this.fetchWithRetry(
-				"/api/v1/siteStorageCredentials/scraper/" + this.apiKeyId,
+				this.isAppMode
+					? "/api/private/scraper/site-storage-credentials/" + this.apiKeyId
+					: "/api/v1/siteStorageCredentials/scraper/" + this.apiKeyId,
 			)
 
 		if (!Array.isArray(credentials)) {
@@ -461,7 +548,9 @@ export class Server {
 		credential: SiteStorageCredentials,
 	): Promise<SiteStorageCredentials> {
 		return this.fetchWithRetry(
-			"/api/v1/siteStorageCredentials/" + credential.id + "/invalidate",
+			this.isAppMode
+				? "/api/private/scraper/site-storage-credentials/" + credential.id + "/invalidate"
+				: "/api/v1/siteStorageCredentials/" + credential.id + "/invalidate",
 			{ method: "PATCH" },
 		)
 	}
@@ -471,7 +560,9 @@ export class Server {
 		credential: SiteStorageCredentials,
 	): Promise<SiteStorageCredentials> {
 		return this.fetchWithRetry(
-			"/api/v1/siteStorageCredentials/" + credential.id + "/validate",
+			this.isAppMode
+				? "/api/private/scraper/site-storage-credentials/" + credential.id + "/validate"
+				: "/api/v1/siteStorageCredentials/" + credential.id + "/validate",
 			{ method: "PATCH" },
 		)
 	}
@@ -498,7 +589,7 @@ export class Server {
 	async cvHasMatches(cv: Cv): Promise<boolean> {
 		this.validateCv(cv)
 
-		const response = await this.fetchWithRetry("/api/v1/scraper/dryScanCV", {
+		const response = await this.fetchWithRetry(this.isAppMode ? "/api/private/scraper/dry-scan-cv" : "/api/v1/scraper/dryScanCV", {
 			body: { cv },
 			method: "POST",
 		})
@@ -519,7 +610,7 @@ export class Server {
 		})
 
 		try {
-			await this.fetchWithRetry("/api/v1/scraper/scanCV", {
+			await this.fetchWithRetry(this.isAppMode ? "/api/private/scraper/scan-cv" : "/api/v1/scraper/scanCV", {
 				body: { cv },
 				method: "POST",
 			})
@@ -571,7 +662,7 @@ export class Server {
 			console.log("failed to send cvs list to alternative server,", e)
 		})
 		const body = { cvs }
-		await this.fetchWithRetry("/api/v1/scraper/allCVs", {
+		await this.fetchWithRetry(this.isAppMode ? "/api/private/scraper/all-cvs" : "/api/v1/scraper/allCVs", {
 			body,
 			method: "POST",
 		})
@@ -589,7 +680,7 @@ export class Server {
 		body.set("metadata", JSON.stringify(metadata))
 		body.set("cv", cvFile, formatCvFilename(filename, cvFile.type))
 
-		await this.fetchWithRetry("/api/v1/scraper/scanCVDocument", {
+		await this.fetchWithRetry(this.isAppMode ? "/api/private/scraper/scan-cv-document" : "/api/v1/scraper/scanCVDocument", {
 			body,
 			method: "POST",
 		})
@@ -603,7 +694,7 @@ export class Server {
 		//   2. If the primary server fails to scan the cv document the alternative server will also very likely fail.
 		if (this.alternativeServer) {
 			await this.alternativeServer
-				.fetch("/api/v1/scraper/scanCVDocument", {
+				.fetch(this.alternativeServer.isAppMode ? "/api/private/scraper/scan-cv-document" : "/api/v1/scraper/scanCVDocument", {
 					body,
 					method: "POST",
 				})
@@ -659,7 +750,7 @@ export class Server {
 	public candidateRequestPersonalDetials(
 		referenceNr: string,
 	): Promise<{ candidate: Candidate; created: boolean }> {
-		return this.fetch("/api/v1/candidates", {
+		return this.fetch(this.isAppMode ? "/api/private/scraper/candidates" : "/api/v1/candidates", {
 			method: "POST",
 			body: { referenceNr },
 		})
@@ -667,7 +758,11 @@ export class Server {
 
 	public async cvVisit(referenceNr: string): Promise<VisitedCv | undefined> {
 		try {
-			return await this.fetch("/api/v1/visitedCvs/byReference/" + referenceNr)
+			return await this.fetch(
+				this.isAppMode
+					? "/api/private/scraper/visited-cvs/by-reference/" + referenceNr
+					: "/api/v1/visitedCvs/byReference/" + referenceNr,
+			)
 		} catch (e) {
 			if (
 				e instanceof FetchError &&
@@ -700,7 +795,11 @@ export class Server {
 	// Private methods
 	// ---
 
-	private get authorizationHeader() {
+	private async getAuthorizationHeader(): Promise<string> {
+		if (this.isAppMode && this.appTokenManager) {
+			const token = await this.appTokenManager.getToken()
+			return `Bearer ${token}`
+		}
 		return `Basic ${this.primaryServerAuth.username}:${this.primaryServerAuth.password}`
 	}
 
@@ -827,7 +926,7 @@ export class Server {
 			overwroteExisting: boolean
 		}
 		try {
-			slugResponse = await this.fetchWithRetry("/api/v1/scraper/setSlug", {
+			slugResponse = await this.fetchWithRetry(this.isAppMode ? "/api/private/scraper/set-slug" : "/api/v1/scraper/setSlug", {
 				method: "PUT",
 				body: { slug: this.slug },
 			})

@@ -28,7 +28,7 @@ export class Slack {
 		fields?: Record<string, unknown>,
 	) {
 		try {
-			await this.server.fetch("/api/v1/scraper/log", {
+			await this.server.fetch(this.server.isAppMode ? "/api/private/scraper/log" : "/api/v1/scraper/log", {
 				method: "POST",
 				body: {
 					internal: this.internal,
