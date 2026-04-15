@@ -19,6 +19,7 @@ export interface AppAuth {
 export class AppTokenManager {
 	private token: string | null = null
 	private tokenExpiresAt: number = 0
+	private pending: Promise<string> | null = null
 
 	constructor(private auth: AppAuth) {}
 
@@ -27,7 +28,14 @@ export class AppTokenManager {
 			return this.token
 		}
 
-		return await this.authenticate()
+		if (this.pending) {
+			return await this.pending
+		}
+
+		this.pending = this.authenticate().finally(() => {
+			this.pending = null
+		})
+		return await this.pending
 	}
 
 	private async authenticate(): Promise<string> {
