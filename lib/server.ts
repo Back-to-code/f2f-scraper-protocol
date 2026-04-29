@@ -26,7 +26,7 @@ export interface ServerOptions {
 	f2fAlternativeApp?: string | false // If not set will try to use F2F_ALTERNATIVE_APP env variable (same format), if set to false will disable alternative app
 	port?: number // If not set will try to use SERVER_PORT or default to: 3000
 	noHealthChecks?: boolean // If set to true will disable health checks on the RT-CV server
-	skipSlugCheck?: boolean // If set to true will not check and update the slug on the RT-CV server
+	skipSlugCheck?: boolean // If set to true will not enforce that the scraper has a slug configured
 	skipAliveCheck?: boolean // If set to true will skip the check if the scraper is allowed to scrape
 
 	customHandlers?: CustomHandler[] // If set will add external handlers to the server
@@ -204,8 +204,6 @@ export class Server {
 				process.exit(1)
 			})
 		}
-
-		if (!options.skipSlugCheck) this.setSlug()
 
 		if (options.customHandlers) {
 			try {
@@ -915,31 +913,6 @@ export class Server {
 		const response = apiHandler(this, request)
 		if (!response) return this.notFoundResponse()
 		return response
-	}
-
-	private async setSlug() {
-		console.log("Setting slug in rt-cv...")
-
-		let slugResponse: {
-			slug: string
-			oldSlug: string
-			overwroteExisting: boolean
-		}
-		try {
-			slugResponse = await this.fetchWithRetry(this.isAppMode ? "/api/private/scraper/set-slug" : "/api/v1/scraper/setSlug", {
-				method: "PUT",
-				body: { slug: this.slug },
-			})
-		} catch (e) {
-			console.log("error setting slug,", e)
-			return
-		}
-
-		if (slugResponse.overwroteExisting) {
-			console.log(
-				`Warning: Overwrote existing slug ('${slugResponse.oldSlug}') with '${slugResponse.slug}'`,
-			)
-		}
 	}
 
 	private mightGetEnv(k: string): string {
