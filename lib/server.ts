@@ -773,6 +773,21 @@ export class Server {
 		}
 	}
 
+	public async cvVisits(
+		referenceNrs: string[],
+	): Promise<Record<string, VisitedCv>> {
+		if (referenceNrs.length === 0) return {}
+		return await this.fetch(
+			this.isAppMode
+				? "/api/private/scraper/visited-cvs/by-references"
+				: "/api/v1/visitedCvs/byReferences",
+			{
+				method: "POST",
+				body: referenceNrs,
+			},
+		)
+	}
+
 	// Send a message to the error channel within the Script / Backtocode slack.
 	// Only visible for us developers.. hence internal.
 	public get internalSlack(): Slack {
