@@ -56,15 +56,6 @@ export interface SiteStorageCredentials extends SiteStorageCredentialsValue {
 	hiddenCredentials: boolean
 }
 
-export interface Candidate {
-	id: string
-	createdAt: string
-	updatedAt: string
-	invite?: string
-	cv?: Cv
-	referenceNr: string
-}
-
 interface ServerAuth {
 	username: string
 	password: string
@@ -743,15 +734,6 @@ export class Server {
 
 			this.externalHandlers.set(methodPathString, handlerFunc)
 		}
-	}
-
-	public candidateRequestPersonalDetials(
-		referenceNr: string,
-	): Promise<{ candidate: Candidate; created: boolean }> {
-		return this.fetch(this.isAppMode ? "/api/private/scraper/candidates" : "/api/v1/candidates", {
-			method: "POST",
-			body: { referenceNr },
-		})
 	}
 
 	public async cvVisit(referenceNr: string): Promise<VisitedCv | undefined> {
